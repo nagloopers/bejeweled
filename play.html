@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🕹️ Game Portal — Play</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body class="play-view">
+  <header class="player-header">
+    <a class="btn btn-back" href="index.html">← Back to portal</a>
+    <div class="player-title" id="player-title">Loading…</div>
+    <button class="btn" id="fullscreen-btn" type="button">⛶ Fullscreen</button>
+  </header>
+
+  <div class="player-frame-wrap" id="player-shell">
+    <iframe
+      id="game-frame"
+      class="game-frame"
+      src=""
+      title="Game"
+      allow="fullscreen; gamepad; autoplay; clipboard-write; accelerometer; gyroscope"
+      allowfullscreen
+    ></iframe>
+  </div>
+
+  <script src="assets/games.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var slug = params.get("game");
+      var games = window.GAMES || [];
+      var game = games.find(function (g) { return g.slug === slug; });
+
+      var titleEl = document.getElementById("player-title");
+      var frame = document.getElementById("game-frame");
+
+      if (!game) {
+        titleEl.textContent = "Game not found";
+        frame.remove();
+        var msg = document.createElement("div");
+        msg.className = "player-error";
+        msg.innerHTML = "We couldn't find that game. <a href=\"index.html\">Back to the portal</a>";
+        document.getElementById("player-shell").appendChild(msg);
+        return;
+      }
+
+      document.title = "🕹️ " + game.title;
+      titleEl.textContent = game.title;
+      frame.src = game.src;
+
+      document.getElementById("fullscreen-btn").addEventListener("click", function () {
+        var shell = document.getElementById("player-shell");
+        if (!document.fullscreenElement) {
+          (shell.requestFullscreen ? shell.requestFullscreen() : null);
+        } else {
+          document.exitFullscreen();
+        }
+      });
+
+      // Keep the iframe alive when navigating away and returning via back/forward.
+      window.addEventListener("pagehide", function () { frame.src = ""; });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🕹️ Game Portal</title>
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon" aria-hidden="true">🕹️</span>
+        <div>
+          <h1>Game Portal</h1>
+          <p class="tagline">My HTML games, all in one place</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <span class="pill" id="game-count">0 games</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid-wrap" aria-label="Games">
+      <div id="game-grid" class="game-grid"></div>
+
+      <div id="empty-state" class="empty-state hidden" role="status">
+        <div class="empty-icon" aria-hidden="true">🎮</div>
+        <h2>No games yet</h2>
+        <p>Add your first game and it will show up here.</p>
+        <ol class="add-steps">
+          <li>Copy your game into <code>games/&lt;name&gt;/</code> so it opens from <code>games/&lt;name&gt;/index.html</code></li>
+          <li>Open <code>assets/games.js</code> and add an entry for it</li>
+          <li>Reload this page — done!</li>
+        </ol>
+        <a class="btn" href="assets/games.js" target="_blank" rel="noopener">Open games.js</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>Add games by dropping them into the <code>games/</code> folder and listing them in <code>assets/games.js</code>.</p>
+  </footer>
+
+  <script src="assets/games.js"></script>
+  <script src="assets/portal.js"></script>
+</body>
+</html>
