@@ -95,7 +95,9 @@ The page's `<script>` is browser-agnostic enough to run in Node: a harness
 stubs `document`, `AudioContext`, `localStorage`, `requestAnimationFrame` and
 friends in a `vm` context, runs the whole script, then appends the checks.
 Run `node tetris_harness.js <path-to-index.html>` (see the session scratchpad
-for the current suite — 12 checks: rotation-state consistency, kick-table
+for the current suite — 14 checks: rotation-state consistency, kick-table
 completeness, new-game sanity, controlled single/Tetris/T-spin scoring,
 top-out on spawn, lock-out, hold semantics, a 5000-piece simulated random
-game, 7-bag permutation across consumed bags, and best-score persistence).
+game, 7-bag permutation across consumed bags, best-score persistence, exact
+SRS kick-table values, and render position (piece/ghost drawn at true board
+columns)).

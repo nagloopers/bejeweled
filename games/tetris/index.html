@@ -877,17 +877,20 @@ function drawBoard(){
       ctx.strokeRect(1, ry + 1, W - 2, cell - 2);
     }
   }
-  // ghost + active (skip cells still in hidden rows)
+  // ghost + active (skip cells still in hidden rows).
+  // NB: pieceCells() already returns ABSOLUTE board coords (x+cx, y+cy) —
+  // draw them directly; do NOT add p.x again (that double-shifted the
+  // rendered piece/ghost off the board).
   if (G.piece && !G.clearing) {
     const p = G.piece;
     const gy = ghostY();
     if (gy > p.y) {
-      for (const [cx, cy] of pieceCells(p.type, p.rot, p.x, gy)) {
-        if (cy >= HIDDEN) drawBlock(ctx, (cx + p.x) * cell, (cy - HIDDEN) * cell, cell, COLORS[p.type], { ghost: true });
+      for (const [bx, by] of pieceCells(p.type, p.rot, p.x, gy)) {
+        if (by >= HIDDEN) drawBlock(ctx, bx * cell, (by - HIDDEN) * cell, cell, COLORS[p.type], { ghost: true });
       }
     }
-    for (const [cx, cy] of pieceCells(p.type, p.rot, p.x, p.y)) {
-      if (cy >= HIDDEN) drawBlock(ctx, (cx + p.x) * cell, (cy - HIDDEN) * cell, cell, COLORS[p.type]);
+    for (const [bx, by] of pieceCells(p.type, p.rot, p.x, p.y)) {
+      if (by >= HIDDEN) drawBlock(ctx, bx * cell, (by - HIDDEN) * cell, cell, COLORS[p.type]);
     }
   }
 }
