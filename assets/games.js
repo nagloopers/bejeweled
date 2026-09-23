@@ -34,6 +34,14 @@ window.GAMES = [
     cover: "games/tetris/cover.png",
     tag: "action"
   },
+  {
+    slug: "slots",
+    title: "Lucky Slots",
+    description: "Spin neon reels — 5 paylines, wilds & scatter. Demo credits, no real money.",
+    src: "games/slots/index.html",
+    cover: "games/slots/cover.png",
+    tag: "casual"
+  },
   // {
   //   slug: "tictactoe",
   //   title: "Bejeweled",
