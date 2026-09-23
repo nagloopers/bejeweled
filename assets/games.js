@@ -50,6 +50,14 @@ window.GAMES = [
     cover: "games/solitaire/cover.png",
     tag: "puzzle"
   },
+  {
+    slug: "snakes-ladders",
+    title: "Snakes & Ladders",
+    description: "Neon jungle crown race — slithering snakes, glowing ladders, portals, traps & lightning.",
+    src: "games/snakes-ladders/index.html",
+    cover: "games/snakes-ladders/cover.png",
+    tag: "classic"
+  },
   // {
   //   slug: "tictactoe",
   //   title: "Bejeweled",
