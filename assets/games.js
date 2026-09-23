@@ -47,6 +47,7 @@ window.GAMES = [
     title: "Solitaire",
     description: "Classic Klondike — drag cards, build foundations, beat the clock.",
     src: "games/solitaire/index.html",
+    cover: "games/solitaire/cover.png",
     tag: "puzzle"
   },
   // {
