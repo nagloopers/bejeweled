@@ -422,7 +422,7 @@ h1,h2,h3,h4,p{margin:0}
 @keyframes wingR{from{transform:rotateY(-58deg)}to{transform:rotateY(12deg)}}
 
 /* ---- butterfly: a pointed forewing, a rounder hindwing, and eyespots ---- */
-.bug.bfly{--beat:.30s}
+.bug.bfly{--beat:.44s}
 .bug.bfly .w{top:2%;width:52%;height:52%;
   box-shadow:0 0 0 .7px rgba(40,24,6,.6),inset 0 0 6px rgba(0,0,0,.14)}
 .bug.bfly .w.l{border-radius:86% 26% 30% 64%/76% 30% 40% 70%}
@@ -463,7 +463,7 @@ h1,h2,h3,h4,p{margin:0}
 .bug.dfly .w::before,.bug.dfly .w::after{display:none}
 
 /* ---- bird: a swallow — dark swept wings, pale breast, forked tail ---- */
-.bug.bird{--beat:.40s}
+.bug.bird{--beat:.54s}
 .bug.bird .bod{width:30%;height:48%;margin-left:-15%;top:24%;
   border-radius:52% 52% 40% 40%/44% 44% 66% 66%;
   background:linear-gradient(170deg,#fdfbf6 0 52%,#6d7f93 52%,#3f4d5e);
@@ -717,10 +717,10 @@ h1,h2,h3,h4,p{margin:0}
 /* ---- things that happen to a farmer ----------------------------------- */
 /* a tractor hitched on behind, blowing smoke */
 .bb.tow{left:calc(var(--cell)*-1.05);width:var(--cell)}
-.bb.tow .glyph{font-size:calc(var(--cell)*.4);animation:towJig .28s ease-in-out infinite alternate}
+.bb.tow .glyph{font-size:calc(var(--cell)*.4);animation:towJig .36s ease-in-out infinite alternate}
 @keyframes towJig{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-8%) rotate(3deg)}}
 /* a gopher having a good look at what it just did */
-.molepop .glyph{font-size:calc(var(--cell)*.34);animation:molePop 1.5s ease-out forwards}
+.molepop .glyph{font-size:calc(var(--cell)*.34);animation:molePop 2s ease-out forwards}
 @keyframes molePop{
   0%{transform:translateY(60%) scale(.3);opacity:0}
   18%{transform:translateY(-14%) scale(1.1);opacity:1}
@@ -729,7 +729,7 @@ h1,h2,h3,h4,p{margin:0}
   70%{transform:translateY(0) rotate(9deg)}
   100%{transform:translateY(70%) scale(.5);opacity:0}}
 /* the twister itself, standing on the tile it is about to empty */
-.funnel .glyph{font-size:calc(var(--cell)*.95);animation:funnelUp 1.3s ease-out forwards}
+.funnel .glyph{font-size:calc(var(--cell)*.95);animation:funnelUp 1.8s ease-out forwards}
 @keyframes funnelUp{
   0%{transform:scale(.15) rotate(0);opacity:0}
   22%{opacity:1}
@@ -737,7 +737,7 @@ h1,h2,h3,h4,p{margin:0}
   100%{transform:scale(.5) rotate(760deg);opacity:0}}
 /* crows dropping in on a scrumped field */
 .crowfly{position:fixed;z-index:29;font-size:21px;pointer-events:none;
-  animation:crowSwoop 1.6s cubic-bezier(.4,.05,.5,1) forwards}
+  animation:crowSwoop 2.1s cubic-bezier(.4,.05,.5,1) forwards}
 @keyframes crowSwoop{
   0%{transform:translate(var(--ax),var(--ay)) scale(.4) rotate(0);opacity:0}
   22%{opacity:1}
@@ -2361,10 +2361,10 @@ const WING_SETS = [
   {wing:"linear-gradient(135deg,#b6f08a,#5fae4a)", spot:"rgba(255,255,255,.7)",  body:"linear-gradient(180deg,#3f5230,#161f11)"},
 ];
 const FLYERS = [
-  {sp:"bfly", n:3, z:[34, 82],  t:[19, 27], size:0.44, beat:0.30},
-  {sp:"bee",  n:3, z:[22, 50],  t:[13, 18], size:0.20, beat:0.07},
-  {sp:"dfly", n:2, z:[30, 66],  t:[16, 23], size:0.30, beat:0.09},
-  {sp:"bird", n:2, z:[96, 155], t:[24, 33], size:0.42, beat:0.40},
+  {sp:"bfly", n:3, z:[34, 82],  t:[26, 37], size:0.44, beat:0.44},
+  {sp:"bee",  n:3, z:[22, 50],  t:[18, 25], size:0.20, beat:0.07},
+  {sp:"dfly", n:2, z:[30, 66],  t:[22, 31], size:0.30, beat:0.09},
+  {sp:"bird", n:2, z:[96, 155], t:[32, 44], size:0.42, beat:0.54},
 ];
 function bugHTML(sp, set){
   const wings = sp === "dfly"
@@ -2664,6 +2664,7 @@ function buildPawns(){
       '<div class="crown">👑</div></div>';
     DOM.pawns.appendChild(n);
     p.node = n; p.lift = n.querySelector(".lift"); p.sh = n.querySelector(".sh");
+    p.towStop = null;
   });
   layoutPawns(true);
 }
@@ -3070,16 +3071,35 @@ function crowsIn(i, n){
   setTimeout(() => SFX.voice("crow"), 260);
 }
 
-/* ---- a tractor hitched on behind, blowing smoke ------------------------- */
-function tractorTow(p, ms){
+/* ---- a tractor hitched on behind, blowing smoke -------------------------
+   The ride owns the tractor. A fixed timer used to leave it stuck to the
+   piece when the tile it landed on opened a dialog, or when one tractor
+   threw you straight onto another, so unhitching is now explicit and always
+   clears whatever the piece is currently towing. */
+function unhitch(p){
+  if (!p) return;
+  if (p.towStop) p.towStop();
+  if (p.lift) Array.from(p.lift.querySelectorAll(".bb.tow")).forEach(n => n.remove());
+}
+function tractorTow(p){
   if (!p || !p.lift) return;
+  unhitch(p);                          /* never two tractors on one piece */
+  const gen = S.gen;
   const tow = el("div", "bb tow", '<span class="glyph">🚜</span>');
   p.lift.appendChild(tow);
+  const stop = () => {
+    clearInterval(puff);
+    tow.remove();
+    if (p.towStop === stop) p.towStop = null;
+  };
   const puff = setInterval(() => {
+    if (gen !== S.gen || !p.lift.isConnected){ stop(); return; }
     const pt = tileCenter(p.pos);
     trailPuff(pt.x - CELL * .4, pt.y + CELL * .12);
-  }, 180);
-  setTimeout(() => { clearInterval(puff); tow.remove(); }, ms || 2200);
+  }, 210);
+  p.towStop = stop;
+  /* backstop for an abandoned turn, and only ever for its own tractor */
+  setTimeout(() => { if (p.towStop === stop) stop(); }, 9000);
 }
 function confettiStorm(n){
   const chars = ["🌽","🌻","🎃","🍓","🍉","🌾","🪙","⭐","🥕","🍎"];
@@ -3150,13 +3170,17 @@ function tween(ms, fn){
     requestAnimationFrame(step);
   });
 }
+/* How fast the pieces move. Kept in one place because it is the single knob
+   that decides whether a turn feels brisk or frantic. */
+const MOVE = {hop:340, gap:62, shove:260, shoveGap:44, fly:820, lane:1150};
+
 async function hopTo(p, to, dur){
   const from = p.pos, a = tileCenter(from), b = tileCenter(to), off = pawnOffset(p);
   const c = cell(), lift = c * .55;
   SFX.play("hop", to);
   /* dust kicked up mid-hop on a fixed schedule, so the trail looks the same
      whatever frame rate the device manages */
-  const span = dur || 230;
+  const span = dur || MOVE.hop;
   [0.28, 0.52, 0.76].forEach(f => setTimeout(() => {
     trailPuff(a.x + (b.x - a.x) * f + off.ox, a.y + (b.y - a.y) * f + off.oy);
   }, span * f));
@@ -3198,7 +3222,7 @@ async function walk(p, path, opt){
       else if (to === 0) await crossGate(p);
     }
     if (S.gen !== p.gen0 || S.over) return;
-    await sleep(opt?.gap ?? 40);
+    await sleep(opt?.gap ?? MOVE.gap);
   }
   if (gathered > 1) toast("🚜", p.name + " swept up " + gathered + " ripe crops for " + gold + " coins");
 }
@@ -3214,12 +3238,12 @@ async function rideHome(p){
   SFX.play("tractor");
   SFX.voice("dog");
   toast("🛤️", p.name + " rolls down the return lane");
-  await flyTo(p, 0, 900, 3.4);
+  await flyTo(p, 0, MOVE.lane, 3.4);
 }
 /* a swooping flight used by twisters and bridges */
 async function flyTo(p, to, dur, arc){
   const a = tileCenter(p.pos), b = tileCenter(to), off = pawnOffset(p), c = cell();
-  await tween(dur || 620, k => {
+  await tween(dur || MOVE.fly, k => {
     const e = ease(k);
     p.node.style.left = (a.x + (b.x - a.x) * e + off.ox) + "px";
     p.node.style.top = (a.y + (b.y - a.y) * e + off.oy) + "px";
@@ -3339,6 +3363,10 @@ function grow(t, n){
   return nowRipe;
 }
 function harvest(t, p, mult, tag){
+  /* market and mill runs sell a snapshot of your ripe fields one at a time,
+     with animation between each — so a tile can be cleared underneath the
+     loop. Selling nothing is the right answer, not a thrown error. */
+  if (!t.crop) return 0;
   const val = harvestValue(t, mult);
   const key = t.crop.key;
   t.crop = null;
@@ -3537,7 +3565,9 @@ async function doMarket(p, fromCard){
     await sleep(700); return;
   }
   let total = 0;
+  const gen0 = S.gen;
   for (const t of ripe){
+    if (S.gen !== gen0 || S.over) return;
     total += harvest(t, p, 1.25 * WEATHER[S.wx].mult, " <i>(market +25%)</i>");
     await sleep(320);
   }
@@ -3561,7 +3591,9 @@ async function doMill(p){
     return;
   }
   let total = 0;
+  const gen0 = S.gen;
   for (const t of ripe){
+    if (S.gen !== gen0 || S.over) return;
     total += harvest(t, p, 1.6 * WEATHER[S.wx].mult, " <i>(milled +60%)</i>");
     sparkle(MILL_I, ["🌫️","🍞"], 5);
     await sleep(330);
@@ -3710,7 +3742,7 @@ async function shove(p, delta){
   if (!delta) return;
   /* the lane is a loop, so a shove wraps round it in either direction */
   const path = delta > 0 ? walkPath(p.pos, delta) : walkBack(p.pos, -delta);
-  await walk(p, path, {dur:165, gap:18, silent:delta < 0, back:delta < 0});
+  await walk(p, path, {dur:MOVE.shove, gap:MOVE.shoveGap, silent:delta < 0, back:delta < 0});
 }
 
 async function resolveLanding(p, depth){
@@ -3739,9 +3771,11 @@ async function resolveLanding(p, depth){
       bubble(p, "\ud83d\ude0e");
       setTimeout(() => SFX.voice("dog"), 520);
       toast("🚜", p.name + " hitches a ride — 3 tiles on!");
-      tractorTow(p, 1500);
-      await sleep(420);
+      tractorTow(p);
+      await sleep(520);
       await shove(p, 3);
+      unhitch(p);                      /* the tractor drops you and drives off */
+      await sleep(180);
       await resolveLanding(p, depth + 1);
       break;
 
@@ -3982,6 +4016,9 @@ function nextWeather(){
   return w;
 }
 async function newDay(){
+  /* dawn takes a second or two of animation, and "New game" can land in the
+     middle of it — so the sweep bails the moment it stops being this game */
+  const gen0 = S.gen;
   S.day++;
   S.wx = S.wxNext;
   S.wxNext = nextWeather();
@@ -4011,7 +4048,9 @@ async function newDay(){
   const crops = S.board.filter(t => t.crop);
   let ripened = 0, grew = 0;
   for (const t of crops){
-    const owner = S.players[t.crop.owner];
+    if (S.gen !== gen0 || S.over) return;
+    const owner = t.crop && S.players[t.crop.owner];
+    if (!owner) continue;              /* harvested or cleared underneath us */
     let g = W.grow * (owner.irrigDays > 0 ? 2 : 1);
     if (g <= 0) continue;
     if (grow(t, g)){ ripened++; ripenBurst(t.i); }
@@ -4029,7 +4068,8 @@ async function newDay(){
 
   /* --- storm damage --- */
   if (S.wx === "storm"){
-    const victims = crops.filter(t => t.crop && S.players[t.crop.owner].scareDays <= 0);
+    const victims = crops.filter(t => t.crop && S.players[t.crop.owner] &&
+                                      S.players[t.crop.owner].scareDays <= 0);
     if (victims.length && S.rnd() < .72){
       const t = pick(victims, S.rnd);
       const C = CROPS[t.crop.key], o = S.players[t.crop.owner];
@@ -4048,6 +4088,7 @@ async function newDay(){
 
   /* --- livestock payday --- */
   for (const p of S.players){
+    if (S.gen !== gen0 || S.over) return;
     if (p.irrigDays > 0) p.irrigDays--;
     if (p.scareDays > 0) p.scareDays--;
     const inc = animalIncome(p);

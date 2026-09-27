@@ -177,6 +177,11 @@ twister that flings you back past the barn earns a consolation +40 rather than a
   bursts, shockwaves, lightning, a 130-piece confetti storm, drifting clouds, a turning windmill,
   rolling hills, a tractor crawling the horizon, and rain that actually falls when it rains.
 
+**Pacing lives in one place.** How fast a piece hops, how long the gap between hops is, how far a
+shove carries and how long a flight takes are all constants in a single `MOVE` object, because that
+is the one knob that decides whether a turn feels brisk or frantic. Pieces move at a pace you can
+actually follow.
+
 **The board itself never moves.** The whole field is always on screen, so the camera holds
 perfectly still — it only ever shifts when *you* drag, zoom or reset it. Nothing lifts the tiles
 either: hovering one and the dawn sweep both light it up rather than raising it. Everything that
