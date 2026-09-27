@@ -986,6 +986,14 @@ h1,h2,h3,h4,p{margin:0}
 .keys{display:flex;flex-wrap:wrap;gap:6px;font-size:10.5px;color:var(--dim)}
 .keys kbd{background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:6px;
   padding:2px 7px;font-family:inherit;font-weight:800;color:var(--ink)}
+#sndTest{margin-top:14px;font-size:11.5px;line-height:1.55;display:none}
+#sndTest.on{display:block}
+#sndTest .box{padding:11px 13px;border-radius:13px;border:1px solid var(--line);
+  background:rgba(255,255,255,.05)}
+#sndTest .verdict{font-weight:800;font-size:12.5px;display:block;margin-bottom:5px}
+#sndTest .ok{color:var(--leaf)} #sndTest .bad{color:var(--rose)} #sndTest .warn{color:var(--gold)}
+#sndTest code{font-size:10px;color:var(--faint);display:block;margin-top:7px;
+  word-break:break-all;letter-spacing:.2px}
 
 /* victory */
 #win .sheet{width:min(620px,100%);text-align:center}
@@ -1249,8 +1257,10 @@ h1,h2,h3,h4,p{margin:0}
       <span><kbd>C</kbd> reset camera</span><span><kbd>H</kbd>/<kbd>Esc</kbd> help</span>
       <span><kbd>N</kbd> new game</span><span>drag the board to orbit · scroll to zoom</span>
     </div>
+    <div id="sndTest"></div>
     <div class="modfoot">
       <span id="buildTag" style="flex:1;font-size:10px;color:var(--faint);letter-spacing:.5px"></span>
+      <button class="btn ghost" id="bSndTest">🔎 Test the sound</button>
       <button class="btn gold" id="bHelpClose">Got it 🌾</button>
     </div>
   </div>
@@ -1277,7 +1287,7 @@ h1,h2,h3,h4,p{margin:0}
 /*__LOGIC_START__*/
 /* Bumped whenever the file changes, so "is my browser running the new one?"
    is a question you can answer by looking instead of guessing. */
-const BUILD = "2026-09-27.4";
+const BUILD = "2026-09-27.5";
 
 const COLS = 7, ROWS = 7, NTILES = COLS * ROWS, LAST = NTILES - 1;
 
@@ -1940,9 +1950,47 @@ const SFX = (function(){
     document.addEventListener("visibilitychange", () => { if (!document.hidden) resume(); });
   })();
 
+  /* ---- "why can I not hear anything?" ------------------------------------
+     Taps the master bus with an analyser, plays a test tone through the
+     normal path, and reports what actually came out the other end. If the
+     analyser sees signal and you still hear nothing, the problem is below
+     us: a muted tab, or the system output. */
+  async function selfTest(){
+    const r = {muted:muted, state:"off"};
+    if (!boot()) return Object.assign(r, {fail:"This browser has no Web Audio support."});
+    resume();
+    await new Promise(res => setTimeout(res, 300));
+    r.state = ctx.state;
+    r.rate = ctx.sampleRate;
+    r.outputs = ctx.destination.maxChannelCount;
+    r.master = +master.gain.value.toFixed(2);
+    r.voiceBus = voiceBus ? +voiceBus.gain.value.toFixed(2) : null;
+    let peak = 0;
+    try {
+      const an = ctx.createAnalyser();
+      an.fftSize = 2048;
+      master.connect(an);                       /* a tap: does not alter output */
+      const wasMuted = muted;
+      if (wasMuted) master.gain.value = .85;    /* test the path, not the switch */
+      tone({type:"triangle", f:660, dur:.9, vol:.35});
+      const data = new Float32Array(an.fftSize);
+      const t0 = performance.now();
+      while (performance.now() - t0 < 750){
+        an.getFloatTimeDomainData(data);
+        for (let i = 0; i < data.length; i++){ const v = Math.abs(data[i]); if (v > peak) peak = v; }
+        await new Promise(res => setTimeout(res, 25));
+      }
+      if (wasMuted) master.gain.value = 0;
+      try { master.disconnect(an); } catch(e){}
+    } catch(e){ r.fail = e.message; }
+    r.signal = +peak.toFixed(4);
+    return r;
+  }
+
   return {
     /* "off" (never booted), "suspended"/"interrupted" (blocked), "running" */
     get state(){ return ctx ? ctx.state : "off"; },
+    selfTest(){ return selfTest(); },
     wake(){ if (boot()) resume(); },
     play(name, arg){ const f = lib[name] || voices[name]; if (f){ try { f(arg); } catch(e){} } },
     voice(name){ if (voices[name]){ if (!ok()) return; try { voices[name](); } catch(e){} } },
@@ -4480,6 +4528,39 @@ $("#bNew").addEventListener("click", () => {
 $("#bHelp").addEventListener("click", () => DOM.help.classList.add("on"));
 $("#bHelp2").addEventListener("click", () => DOM.help.classList.add("on"));
 $("#bHelpClose").addEventListener("click", () => DOM.help.classList.remove("on"));
+$("#bSndTest").addEventListener("click", async () => {
+  const box = $("#sndTest");
+  box.classList.add("on");
+  box.innerHTML = '<div class="box">Listening to the master bus…</div>';
+  const r = await SFX.selfTest();
+  let cls = "bad", verdict, advice;
+  if (r.fail){
+    verdict = "The sound could not start.";
+    advice = r.fail;
+  } else if (r.outputs === 0){
+    verdict = "This device has no audio output.";
+    advice = "The browser reports zero output channels — check that speakers or headphones are connected.";
+  } else if (r.state !== "running"){
+    verdict = "The browser is holding the sound back.";
+    advice = "The audio context is <b>" + r.state + "</b>. Click anywhere on the page, then test again.";
+  } else if (r.signal < 0.005){
+    verdict = "The game is producing no signal.";
+    advice = "The context is running but nothing reached the output. That is a bug in the game — " +
+             "please send me the line below.";
+  } else {
+    cls = "ok";
+    verdict = "The game is making sound (level " + r.signal + ").";
+    advice = r.muted
+      ? "But it is <b>muted</b> — press <kbd>M</kbd> or tap 🔊 to unmute."
+      : "It is reaching the browser correctly, so if you still cannot hear it the mute is " +
+        "further down: <b>right-click the browser tab → Unmute site</b>, check the system volume " +
+        "and output device, and if you are playing from the portal try opening " +
+        "<b>games/barnstorm/index.html</b> on its own.";
+  }
+  box.innerHTML = '<div class="box"><span class="verdict ' + cls + '">' + verdict + '</span>' +
+    advice + '<code>' + JSON.stringify(r) + ' · build ' + BUILD + '</code></div>';
+  paintAudioBtns();
+});
 $("#bCam").addEventListener("click", () => { SFX.play("click"); resetCam(); });
 DOM.dieScene.addEventListener("click", () => {
   SFX.boot();
@@ -4491,7 +4572,10 @@ DOM.dieScene.addEventListener("click", () => {
 });
 const bSound = $("#bSound"), bMusic = $("#bMusic");
 function paintAudioBtns(){
-  const blocked = !SFX.muted && SFX.state !== "running" && SFX.state !== "off";
+  /* "off" means the context was never even created — that is not fine, and
+     the button used to show it as fine */
+  const started = S.players.length > 0;
+  const blocked = !SFX.muted && SFX.state !== "running" && (started || SFX.state !== "off");
   bSound.textContent = SFX.muted ? "🔇" : blocked ? "🔈" : "🔊";
   bSound.classList.toggle("off", SFX.muted || blocked);
   bSound.title = SFX.muted ? "Sound is muted (M)"

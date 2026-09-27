@@ -231,6 +231,14 @@ parameter is scrubbed first, because one NaN poisons everything downstream of it
 <kbd>M</kbd> mutes everything; 🎵 toggles just the music — and if you start a season muted, the
 game says that too.
 
+**If it is still silent, the game will tell you why.** *How to play* has a **🔎 Test the sound**
+button that taps the master bus with an analyser, plays a tone through the normal path, and
+measures what actually came out. It distinguishes the four real cases — no Web Audio, no output
+device, a context the browser is holding back, and a game that is genuinely producing signal — and
+in the last case points at the mute below us: the tab, the system volume, or the output device.
+The help footer also carries a build stamp, so "is my browser running the new file?" is answerable
+by looking.
+
 ## Architecture
 
 One file, layered:
