@@ -1288,7 +1288,7 @@ h1,h2,h3,h4,p{margin:0}
 /*__LOGIC_START__*/
 /* Bumped whenever the file changes, so "is my browser running the new one?"
    is a question you can answer by looking instead of guessing. */
-const BUILD = "2026-09-27.6";
+const BUILD = "2026-09-27.7";
 
 const COLS = 7, ROWS = 7, NTILES = COLS * ROWS, LAST = NTILES - 1;
 
@@ -1538,7 +1538,7 @@ const SFX = (function(){
     musicGain.connect(master);
     ambGain = ctx.createGain(); ambGain.gain.value = 0.3; ambGain.connect(master);
     /* animals get their own bus so the farm always sits above the banjo */
-    voiceBus = ctx.createGain(); voiceBus.gain.value = 1.15; voiceBus.connect(master);
+    voiceBus = ctx.createGain(); voiceBus.gain.value = 0.95; voiceBus.connect(master);
     return ctx;
   }
   function now(){ return ctx.currentTime; }
@@ -1688,15 +1688,23 @@ const SFX = (function(){
     coo(){                                                           /* wood pigeon */
       [0,.21,.44].forEach((d,i) => tone({type:"sine", f:[420,505,430][i], f2:[375,425,360][i],
         dur:.27, vol:.17, delay:d, filter:"lowpass", fc:700, vibrato:6, vdepth:10, atk:.07})); },
-    cowbell(){ const b = .92 + Math.random()*.2;
-      [0,.18,.33].forEach(d => {
-        tone({type:"square", f:880*b, dur:.13, vol:.1, delay:d, filter:"bandpass", fc:2400, q:6});
-        tone({type:"square", f:1297*b, dur:.1, vol:.07, delay:d + .01, filter:"bandpass", fc:3100, q:7}); }); },
+    /* A cowbell is two inharmonic partials with a fast decay and a bit of
+       clank — not square blips on a rhythm, which is how you build a slot
+       machine. One or two lazy hits, quiet, from somewhere over the field. */
+    cowbell(){ const b = .9 + Math.random()*.22, hits = Math.random() < .45 ? 2 : 1;
+      for (let k = 0; k < hits; k++){
+        const d = k * (.26 + Math.random()*.14);
+        tone({type:"triangle", f:542*b, dur:.26, vol:.055, delay:d, filter:"bandpass", fc:1500, q:2.2, atk:.004});
+        tone({type:"triangle", f:542*b*2.67, dur:.19, vol:.03, delay:d + .004, filter:"bandpass", fc:2100, q:2.6, atk:.004});
+        noise({filter:"bandpass", fc:3200, q:1.1, dur:.05, vol:.03, delay:d});
+      } },
     farTractor(){ tone({type:"sawtooth", f:57, f2:51, dur:2.4, vol:.08, filter:"lowpass", fc:185,
       vibrato:8, vdepth:6}); },
   };
+  /* cowbell is deliberately absent: it answers a cow, it does not start
+     conversations, and a bell going off on its own reads as a fruit machine */
   const BARNYARD = ["cluck","moo","oink","baa","quack","neigh","goat","dog","turkey","crow",
-                    "honk","bray","cowbell"];
+                    "honk","bray"];
   /* who tends to answer whom — a farm is a conversation, not a playlist */
   const ANSWER = {
     cluck:["cluck","turkey","crow"], moo:["moo","cowbell","baa"], oink:["oink","cluck"],
@@ -1894,7 +1902,7 @@ const SFX = (function(){
     try {
       if (muted || !ctx) return;
       const r = Math.random();
-      if (r < .60 * mood.rate){
+      if (r < .54 * mood.rate){
         /* the board can hand back not just a voice but where it stands */
         const spot = placed(herdVoice && herdVoice());
         const v = spot.v, pan = spot.pan, far = spot.dist * mood.near;
@@ -1925,11 +1933,13 @@ const SFX = (function(){
   function commotion(n){
     try {
       if (muted || !ctx) return;
-      const count = n || (4 + Math.floor(Math.random() * 3));
+      /* spaced out and held back: a burst of tightly packed synth blips is
+         indistinguishable from a slot machine paying out */
+      const count = Math.min(n || (3 + Math.floor(Math.random() * 2)), 4);
       for (let k = 0; k < count; k++){
         const spot = placed(herdVoice && herdVoice(), 1.7);
-        setTimeout(() => speak(spot.v, spot.pan, Math.min(1, spot.dist + .25)),
-                   k * (110 + Math.random() * 170));
+        setTimeout(() => speak(spot.v, spot.pan, Math.min(.85, spot.dist + .1)),
+                   k * (230 + Math.random() * 220));
       }
     } catch(e){}
   }
@@ -1938,7 +1948,7 @@ const SFX = (function(){
     startBed();
     ambTick();
     ambTimer = setInterval(ambTick, 1900);
-    comTimer = setInterval(() => { if (Math.random() < .45) commotion(); }, 19000);
+    comTimer = setInterval(() => { if (Math.random() < .3) commotion(); }, 27000);
   }
 
   /* Browsers only start audio from a real gesture, and a context can sit
@@ -3966,7 +3976,7 @@ async function crossBarn(p){
   bubble(p, "\ud83c\udf89");
   hopStandee(S.board[LAST].bbNode, "\ud83c\udfda\ufe0f");
   SFX.play("bell");
-  setTimeout(() => SFX.commotion(6), 240);
+  setTimeout(() => SFX.commotion(3), 240);
   pay(p, 120, p.pos, who(p) + " hauled the harvest through <b>The Big Barn</b> — run " +
       p.lap + (need ? "/" + need : "") + " (+120)");
   sparkle(p.pos, ["🏚️","🌾","🪙"], 14);
@@ -4149,7 +4159,7 @@ async function newDay(){
       setTimeout(() => SFX.speak(k % 3 === 0 ? "coo" : "bird",
                                  Math.random() * 1.7 - .85, .45 + Math.random() * .45), k * 150);
   }, 760);
-  setTimeout(() => SFX.commotion(5), 1500);
+  setTimeout(() => SFX.commotion(3), 1500);
   toast("🌅", "Day " + S.day + " — " + W.emoji + " " + W.name, true);
   log('<b>🌅 Day ' + S.day + '</b> · ' + W.emoji + " " + W.name + " — " + W.note, "lb");
   await sleep(950);
@@ -4522,7 +4532,7 @@ function startGame(){
   SFX.watchHerd(herdPick);
   SFX.speak("crow", -.5, 1);
   setTimeout(() => SFX.chorus(["moo","cluck","baa","oink","honk","bray"], 240), 700);
-  setTimeout(() => SFX.commotion(4), 1800);
+  setTimeout(() => SFX.commotion(3), 1800);
   /* a silent farm is nearly always a muted tab or a blocked context */
   if (SFX.muted) setTimeout(() => toast("🔇", "Sound is off — press M or tap 🔊", true), 1200);
   else setTimeout(watchAudio, 1500);
