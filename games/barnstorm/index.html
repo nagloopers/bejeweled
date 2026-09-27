@@ -1249,7 +1249,10 @@ h1,h2,h3,h4,p{margin:0}
       <span><kbd>C</kbd> reset camera</span><span><kbd>H</kbd>/<kbd>Esc</kbd> help</span>
       <span><kbd>N</kbd> new game</span><span>drag the board to orbit · scroll to zoom</span>
     </div>
-    <div class="modfoot"><button class="btn gold" id="bHelpClose">Got it 🌾</button></div>
+    <div class="modfoot">
+      <span id="buildTag" style="flex:1;font-size:10px;color:var(--faint);letter-spacing:.5px"></span>
+      <button class="btn gold" id="bHelpClose">Got it 🌾</button>
+    </div>
   </div>
 </div>
 
@@ -1272,6 +1275,10 @@ h1,h2,h3,h4,p{margin:0}
    PART 1 — PURE GAME CORE  (no DOM, no audio: unit-testable on its own)
    ========================================================================== */
 /*__LOGIC_START__*/
+/* Bumped whenever the file changes, so "is my browser running the new one?"
+   is a question you can answer by looking instead of guessing. */
+const BUILD = "2026-09-27.4";
+
 const COLS = 7, ROWS = 7, NTILES = COLS * ROWS, LAST = NTILES - 1;
 
 const CROPS = {
@@ -3810,9 +3817,15 @@ async function resolveLanding(p, depth){
       setTimeout(() => SFX.voice("dog"), 520);
       toast("🚜", p.name + " hitches a ride — 3 tiles on!");
       tractorTow(p);
-      await sleep(520);
-      await shove(p, 3);
-      unhitch(p);                      /* the tractor drops you and drives off */
+      try {
+        await sleep(520);
+        await shove(p, 3);
+      } finally {
+        /* the ride can fall over half way — crossing the barn, gathering a
+           crop, a new game landing mid-hop — and the tractor must come off
+           regardless, or it rides along for the rest of the season */
+        unhitch(p);
+      }
       await sleep(180);
       await resolveLanding(p, depth + 1);
       break;
@@ -4018,6 +4031,9 @@ async function endTurn(){
 function startTurn(){
   if (S.over) return;
   const p = S.players[S.cur];
+  /* belt and braces: whatever happened last turn, no farmer begins one with
+     a tractor still hitched to them */
+  S.players.forEach(q => unhitch(q));
   p.gen0 = S.gen;
   renderRail(); layoutPawns();
   if (p.skip > 0){
@@ -4545,6 +4561,12 @@ DOM.help.addEventListener("click", e => { if (e.target === DOM.help) DOM.help.cl
 paintDie();
 setDie(1, 0);
 paintAudioBtns();
+(function stampBuild(){
+  const tag = $("#buildTag");
+  if (tag) tag.textContent = "build " + BUILD;
+  try { console.log("%cBarnstorm: Harvest Rush%c build " + BUILD,
+    "font-weight:700;color:#ffd166", "color:#9a917c"); } catch(e){}
+})();
 buildLegend();
 renderSetup();
 renderGoal();
