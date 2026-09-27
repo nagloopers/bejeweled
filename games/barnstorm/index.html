@@ -1157,6 +1157,7 @@ h1,h2,h3,h4,p{margin:0}
     </div>
     <div class="setupfoot">
       <p class="note" id="setupNote">2–4 farmers. Play solo against the CPU or pass-and-play together.</p>
+      <span id="setupBuild" style="font-size:10px;color:var(--faint);letter-spacing:.5px;align-self:center"></span>
       <button class="btn ghost" id="bHelp2">How to play</button>
       <button class="btn gold big" id="bStart">Start the season 🌾</button>
     </div>
@@ -1287,7 +1288,7 @@ h1,h2,h3,h4,p{margin:0}
 /*__LOGIC_START__*/
 /* Bumped whenever the file changes, so "is my browser running the new one?"
    is a question you can answer by looking instead of guessing. */
-const BUILD = "2026-09-27.5";
+const BUILD = "2026-09-27.6";
 
 const COLS = 7, ROWS = 7, NTILES = COLS * ROWS, LAST = NTILES - 1;
 
@@ -2727,6 +2728,14 @@ function startLife(){
   LIFE.push(setInterval(() => { if (Math.random() < .6) barnstorm(); }, 33000));
   LIFE.push(setInterval(rainOnField, 850));
   LIFE.push(setInterval(() => { if (Math.random() < .55) dustDevil(); }, 8500));
+  /* Nothing should ever be towing a tractor while no ride is in flight. The
+     ride itself unhitches in a finally and every turn starts with a sweep,
+     but this is the backstop that makes a stuck tractor impossible rather
+     than merely unlikely — it cannot survive a second on screen. */
+  LIFE.push(setInterval(() => {
+    if (towRides > 0 || !S.players.length) return;
+    S.players.forEach(q => { if (q.lift && q.lift.querySelector(".bb.tow")) unhitch(q); });
+  }, 900));
   LIFE.push(setInterval(() => {
     /* a ripe crop catching the light */
     if (!S.players.length || S.over) return;
@@ -3164,6 +3173,7 @@ function crowsIn(i, n){
    piece when the tile it landed on opened a dialog, or when one tractor
    threw you straight onto another, so unhitching is now explicit and always
    clears whatever the piece is currently towing. */
+let towRides = 0;                      /* tractor rides currently in flight */
 function unhitch(p){
   if (!p) return;
   if (p.towStop) p.towStop();
@@ -3864,11 +3874,13 @@ async function resolveLanding(p, depth){
       bubble(p, "\ud83d\ude0e");
       setTimeout(() => SFX.voice("dog"), 520);
       toast("🚜", p.name + " hitches a ride — 3 tiles on!");
+      towRides++;
       tractorTow(p);
       try {
         await sleep(520);
         await shove(p, 3);
       } finally {
+        towRides = Math.max(0, towRides - 1);
         /* the ride can fall over half way — crossing the barn, gathering a
            crop, a new game landing mid-hop — and the tractor must come off
            regardless, or it rides along for the rest of the season */
@@ -4648,6 +4660,8 @@ paintAudioBtns();
 (function stampBuild(){
   const tag = $("#buildTag");
   if (tag) tag.textContent = "build " + BUILD;
+  const tag2 = $("#setupBuild");
+  if (tag2) tag2.textContent = "build " + BUILD;
   try { console.log("%cBarnstorm: Harvest Rush%c build " + BUILD,
     "font-weight:700;color:#ffd166", "color:#9a917c"); } catch(e){}
 })();
