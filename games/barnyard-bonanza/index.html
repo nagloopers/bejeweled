@@ -373,6 +373,47 @@ header{position:relative;z-index:2;text-align:center;padding:14px 10px 4px;}
 @keyframes coinBurst{0%{transform:translate(0,0) scale(.4);opacity:0;}
   25%{opacity:1;}100%{transform:translate(var(--dx),var(--dy)) scale(1.15) rotate(var(--rot));opacity:0;}}
 
+/* ---------------- SEASONS ---------------- */
+.cground{position:absolute;left:0;right:0;bottom:0;height:62%;z-index:1;pointer-events:none;
+  transition:background 2.5s ease;}
+#center.season-spring .cground{background:linear-gradient(rgba(150,225,125,.30),rgba(95,185,85,.22));}
+#center.season-summer .cground{background:linear-gradient(rgba(196,228,92,.26),rgba(125,185,62,.20));}
+#center.season-autumn .cground{background:linear-gradient(rgba(216,158,68,.36),rgba(170,118,48,.30));}
+#center.season-winter .cground{background:linear-gradient(rgba(238,247,255,.60),rgba(198,220,242,.48));}
+/* buildings and trees sit above the seasonal ground tint */
+.csilo,.cbarn,.ctree,.ctree2,.cfence{z-index:2;}
+#center.season-winter .cfence{filter:brightness(1.2) saturate(.55);}
+.seasonFX{position:absolute;inset:0;z-index:5;pointer-events:none;overflow:hidden;}
+.seasonBit{position:absolute;top:-18px;font-size:12px;animation:seasonFall linear infinite;}
+@keyframes seasonFall{
+  0%{transform:translate(0,-18px) rotate(0);opacity:0;}
+  10%{opacity:.95;}
+  50%{transform:translate(20px,260px) rotate(200deg);opacity:.95;}
+  100%{transform:translate(-14px,540px) rotate(400deg);opacity:0;}}
+
+/* ---------------- HARVEST FESTIVAL ---------------- */
+.bunting{position:absolute;top:30%;left:-2%;right:-2%;height:24px;z-index:6;pointer-events:none;
+  opacity:0;transition:opacity .5s ease;}
+#center.festival .bunting{opacity:1;}
+.bunting i{position:absolute;width:0;height:0;border-left:7px solid transparent;
+  border-right:7px solid transparent;border-top:16px solid var(--c,#f5c542);
+  transform-origin:50% 0;animation:flagWave 1.7s ease-in-out infinite;}
+@keyframes flagWave{0%,100%{transform:rotate(-7deg);}50%{transform:rotate(7deg);}}
+
+/* ---------------- STAMPEDE ---------------- */
+.stampede{position:absolute;bottom:13%;left:-25%;z-index:7;white-space:nowrap;pointer-events:none;
+  animation:stampedeRun 2.3s ease-in forwards;}
+@keyframes stampedeRun{0%{left:-25%;opacity:0;}10%{opacity:1;}90%{opacity:1;}100%{left:106%;opacity:0;}}
+.stampede span{display:inline-block;font-size:22px;margin-right:7px;
+  filter:drop-shadow(0 3px 3px rgba(0,0,0,.35));animation:gallop .28s ease-in-out infinite;}
+@keyframes gallop{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-7px) rotate(2deg);}}
+
+/* ---------------- LIGHTNING ---------------- */
+.boltFlash{position:absolute;inset:0;z-index:7;pointer-events:none;opacity:0;
+  background:radial-gradient(120% 80% at 50% 0%,rgba(255,255,255,.95),rgba(190,215,255,.5) 60%,transparent);
+  animation:boltIn .6s ease-out forwards;}
+@keyframes boltIn{0%{opacity:0;}8%{opacity:1;}18%{opacity:.12;}30%{opacity:.8;}100%{opacity:0;}}
+
 /* the valley fills up as farmers buy and build */
 .cplots{position:absolute;inset:0;z-index:2;pointer-events:none;}
 .plot{position:absolute;transform:translateX(-50%);text-align:center;
@@ -803,6 +844,7 @@ header{position:relative;z-index:2;text-align:center;padding:14px 10px 4px;}
   <div class="logo"><span class="em">🚜</span> <span class="b">BARNYARD</span> BONANZA <span class="em">🐄</span></div>
   <div class="tagline">The great farm fortune race</div>
   <div class="statusbar"><span class="dot"></span> Round <span id="roundNum">1</span>
+    &nbsp;•&nbsp; <span id="seasonChip">🌱 Spring</span>
     &nbsp;•&nbsp; <span id="turnBanner">Farmer's turn</span></div>
 </header>
 
@@ -979,7 +1021,35 @@ const SND = {
     [523,659,784,1047,784,1047,1319].forEach((n,i)=>tone('square',n,0.24,t+i*0.16,0.2)); },
   step(){ if(muted)return; const c=ac();if(!c)return; tone('sine',420,0.05,c.currentTime,0.06); },
   thud(){ if(muted)return; const c=ac();if(!c)return; const t=c.currentTime;
-    tone('sine',120,0.14,t,0.28,60); }
+    tone('sine',120,0.14,t,0.28,60); },
+  /* filtered noise burst — the basis for thunder and hoofbeats */
+  rumble(dur,peak,fFrom,fTo,gain){ if(muted)return; const c=ac(); if(!c)return; const t=c.currentTime;
+    const buf=c.createBuffer(1,Math.floor(c.sampleRate*dur),c.sampleRate);
+    const d=buf.getChannelData(0);
+    for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.6);
+    const src=c.createBufferSource(); src.buffer=buf;
+    const f=c.createBiquadFilter(); f.type='lowpass';
+    f.frequency.setValueAtTime(fFrom,t); f.frequency.exponentialRampToValueAtTime(fTo,t+dur);
+    const g=c.createGain(); g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(gain,t+peak);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(f); f.connect(g); g.connect(c.destination); src.start(t); src.stop(t+dur); },
+  thunder(){ SND.rumble(1.7,0.05,340,70,0.32); },
+  stampede(){ SND.rumble(1.9,0.35,260,110,0.22); },
+  fanfare(){ if(muted)return; const c=ac();if(!c)return; const t=c.currentTime;
+    [523,659,784,1047].forEach((n,i)=>tone('square',n,0.2,t+i*0.1,0.18));
+    tone('triangle',1319,0.35,t+0.42,0.15); },
+  rooster(){ if(muted)return; const c=ac();if(!c)return; const t=c.currentTime;
+    const o=tone('sawtooth',620,0.22,t,0.18,860); vibrato(o,14,50,t,0.22);
+    const o2=tone('sawtooth',780,0.3,t+0.24,0.16,520); vibrato(o2,10,70,t+0.24,0.3); },
+  owl(){ if(muted)return; const c=ac();if(!c)return; const t=c.currentTime;
+    const o=tone('sine',420,0.26,t,0.16,360); vibrato(o,7,14,t,0.26);
+    const o2=tone('sine',400,0.34,t+0.36,0.14,330); vibrato(o2,6,12,t+0.36,0.34); },
+  crickets(){ if(muted)return; const c=ac();if(!c)return; const t=c.currentTime;
+    for(let i=0;i<5;i++) tone('triangle',2400+Math.random()*300,0.035,t+i*0.13,0.07); },
+  birdsong(){ if(muted)return; const c=ac();if(!c)return; const t=c.currentTime;
+    tone('triangle',1800,0.07,t,0.1,2300); tone('triangle',2200,0.06,t+0.11,0.09,1700);
+    tone('triangle',2000,0.08,t+0.22,0.08,2500); }
 };
 
 
@@ -1095,6 +1165,8 @@ function buildBoard(){
     <div class="cloud c1"></div><div class="cloud c2"></div>
     <div class="cbird">🐦</div><div class="cbird b2">🐦</div>
     <div class="field"></div>
+    <div class="cground"></div>
+    <div class="bunting" id="bunting"></div>
     <div class="ccrops">🌾🌾🌾🌾🌾</div>
     <div class="cwindmill"><div class="hub"></div><div class="blades">
       <div class="blade"></div><div class="blade"></div><div class="blade"></div><div class="blade"></div>
@@ -1114,6 +1186,7 @@ function buildBoard(){
       <span class="critter c1">🐔</span><span class="critter c2">🐑</span><span class="critter c3">🐖</span>
     </div>
     <div class="cfireflies" id="cfireflies"></div>
+    <div class="seasonFX" id="seasonFX"></div>
     <div class="rainLayer" id="rainLayer"></div>
     <div class="sparkleLayer" id="sparkleLayer"></div>
     <div class="cfence"></div>`;
@@ -1271,8 +1344,93 @@ function seedFireflies(){
 function dayNightUpdate(){
   const center=document.getElementById('center'); if(!center)return;
   const phases=['time-day','time-dusk','time-night','time-dawn'];
+  const key=phases[(G_STATE.round-1)%phases.length];
+  const changed=center.dataset.phase!==key;
+  center.dataset.phase=key;
   phases.forEach(c=>center.classList.remove(c));
-  center.classList.add(phases[(G_STATE.round-1)%phases.length]);
+  center.classList.add(key);
+  seasonUpdate();
+  // the farm sounds different at each hour of the day
+  if(changed&&G_STATE.started){
+    if(key==='time-dawn')SND.rooster();
+    else if(key==='time-day')SND.birdsong();
+    else if(key==='time-dusk')SND.crickets();
+    else SND.owl();
+  }
+}
+/* ---- seasons: the field turns over every few rounds ---- */
+const SEASONS=[
+  {key:'spring',name:'Spring',ico:'🌱',crops:'🌱🌱🌱🌱🌱',tree:'🌸',tree2:'🌳',bits:['🌸','🌼'],n:10,dur:[7,11]},
+  {key:'summer',name:'Summer',ico:'☀️',crops:'🌻🌻🌻🌻🌻',tree:'🌳',tree2:'🌲',bits:['🦋','✨'],n:6, dur:[9,14]},
+  {key:'autumn',name:'Autumn',ico:'🍂',crops:'🌾🌾🌾🌾🌾',tree:'🍁',tree2:'🌳',bits:['🍂','🍁'],n:12,dur:[6,10]},
+  {key:'winter',name:'Winter',ico:'❄️',crops:'⛄',        tree:'🎄',tree2:'🌲',bits:['❄️','🌨️'],n:14,dur:[8,13]}
+];
+function currentSeason(){ return SEASONS[Math.floor((G_STATE.round-1)/3)%SEASONS.length]; }
+function seasonUpdate(){
+  const center=document.getElementById('center'); if(!center)return;
+  const s=currentSeason();
+  if(center.dataset.season===s.key)return;
+  center.dataset.season=s.key;
+  SEASONS.forEach(x=>center.classList.remove('season-'+x.key));
+  center.classList.add('season-'+s.key);
+  const crops=center.querySelector('.ccrops'); if(crops)crops.textContent=s.crops;
+  const t1=center.querySelector('.ctree'); if(t1)t1.textContent=s.tree;
+  const t2=center.querySelector('.ctree2'); if(t2)t2.textContent=s.tree2;
+  const fx=document.getElementById('seasonFX');
+  if(fx){
+    fx.innerHTML='';
+    for(let i=0;i<s.n;i++){
+      const b=document.createElement('span'); b.className='seasonBit';
+      b.textContent=s.bits[i%s.bits.length];
+      b.style.left=(Math.random()*100)+'%';
+      b.style.fontSize=(9+Math.random()*7).toFixed(1)+'px';
+      b.style.animationDuration=(s.dur[0]+Math.random()*(s.dur[1]-s.dur[0])).toFixed(1)+'s';
+      b.style.animationDelay=(-Math.random()*12).toFixed(1)+'s';
+      fx.appendChild(b);
+    }
+  }
+}
+/* ---- the Harvest Festival takes over the farm ---- */
+function festivalMode(){
+  const center=document.getElementById('center'), bun=document.getElementById('bunting');
+  if(!center||!bun)return;
+  if(!bun.children.length){
+    const cols=['#f5c542','#e8739a','#4caf50','#5ba4cf','#e8a838','#cc4444'];
+    for(let i=0;i<16;i++){
+      const f=document.createElement('i');
+      f.style.left=(i*6.4+1)+'%';
+      f.style.top=(Math.sin(i/15*Math.PI)*-10+10).toFixed(1)+'px';
+      f.style.setProperty('--c',cols[i%cols.length]);
+      f.style.animationDelay=(i*0.08)+'s';
+      bun.appendChild(f);
+    }
+  }
+  center.classList.add('festival');
+  SND.fanfare(); triggerSparkle();
+  setTimeout(()=>center.classList.remove('festival'),5200);
+}
+/* ---- a herd bolts across the farm when big money changes hands ---- */
+function triggerStampede(){
+  const center=document.getElementById('center'); if(!center)return;
+  if(center.querySelector('.stampede'))return;
+  const herd=['🐄','🐑','🐖','🐔','🐴','🐐'];
+  const row=document.createElement('div'); row.className='stampede';
+  const n=4+Math.floor(Math.random()*3);
+  for(let i=0;i<n;i++){
+    const a=document.createElement('span');
+    a.textContent=herd[Math.floor(Math.random()*herd.length)];
+    a.style.animationDelay=(i*0.07)+'s';
+    row.appendChild(a);
+  }
+  center.appendChild(row);
+  SND.stampede();
+  setTimeout(()=>row.remove(),2500);
+}
+function lightningFlash(){
+  const center=document.getElementById('center'); if(!center)return;
+  const b=document.createElement('div'); b.className='boltFlash';
+  center.appendChild(b); SND.thunder();
+  setTimeout(()=>b.remove(),700);
 }
 /* the sun (or moon) tracks across the sky as the farmers take their turns */
 function updateSky(){
@@ -1350,6 +1508,8 @@ function triggerRain(){
     layer.appendChild(d);
   }
   center.classList.add('raining');
+  setTimeout(lightningFlash,700);
+  if(Math.random()<0.6) setTimeout(lightningFlash,1900);
   setTimeout(()=>{ center.classList.remove('raining'); layer.innerHTML=''; },3200);
 }
 function triggerSparkle(){
@@ -1493,7 +1653,9 @@ function logMsg(html,cls){
 }
 function bannerUpdate(){
   const p=curP();
-  document.getElementById('roundNum').textContent='Round '+G_STATE.round;
+  document.getElementById('roundNum').textContent=G_STATE.round;
+  const chip=document.getElementById('seasonChip');
+  if(chip){ const s=currentSeason(); chip.textContent=s.ico+' '+s.name; }
   const banner=document.getElementById('turnBanner');
   if(G_STATE.over){ banner.innerHTML='🏆 Game Over'; return; }
   banner.innerHTML='<span class="tbIco" style="background:'+p.tok.grad+'">'+p.tok.ico+'</span><span class="tbName">'+escapeHtml(p.name)+"'s turn</span>";
@@ -1758,6 +1920,7 @@ function sendToJail(p){
   SND.wahwah(); positionAllTokens(); renderPlayers(); splatMud(10);
 }
 async function harvestFest(p){
+  festivalMode();
   logMsg('🎪 '+escapeHtml(p.name)+' reaches the Harvest Festival.','info');
   if(G_STATE.pot>0){
     const pot=G_STATE.pot; G_STATE.pot=0;
@@ -1776,7 +1939,7 @@ async function marketDay(p){
   }
 }
 async function foxInYard(p){
-  triggerFoxRun();
+  triggerFoxRun(); setTimeout(triggerStampede,450);
   logMsg('🦊 A fox is in the yard! '+escapeHtml(p.name)+' pays every other farmer £25.','bad');
   await showModal('<div class="mTitle">🦊 Fox in the Yard!</div><p>Chaos on the farm! Pay <b>£25</b> to each other farmer.</p>',[{label:'Pay everyone',cls:'red'}]);
   for(const o of G_STATE.players){
@@ -1861,6 +2024,7 @@ async function handleProperty(p,sq){
     if(sq.mortgaged){ logMsg('🏦 '+escapeHtml(sq.name)+' is mortgaged — no rent.','info'); return; }
     if(owner.inJail && sq.type!=='prop'){ /* utilities/garages still charge */ }
     const rent=calcRent(sq,G_STATE.lastRoll);
+    if(rent>=150)triggerStampede();
     logMsg('💵 '+escapeHtml(p.name)+' pays £'+rent+' rent to '+escapeHtml(owner.name)+'.','bad');
     await showModal('<div class="mTitle">💵 Rent Due!</div><p>'+escapeHtml(sq.name)+' belongs to <b>'+escapeHtml(owner.name)+'</b>.<br>Pay rent of <b>£'+rent+'</b>.</p>',[{label:'Pay £'+rent,cls:'red'}]);
     gainMoney(owner,rent);
@@ -2150,16 +2314,15 @@ function bumpTradeCash(delta){
   renderTrade();
 }
 function chipHTML(side,idx,on){
-  const sq=BOARD[idx];
-  const built=sq.type==='prop'&&groupIndices(sq.group).some(i=>BOARD[i].houses>0);
-  return '<button class="trChip'+(on?' on':'')+'" '+(built?'disabled':'')+
+  const sq=BOARD[idx]; const locked=deedLocked(idx);
+  return '<button class="trChip'+(on?' on':'')+'" '+(locked?'disabled title="Sell the barns on this set first"':'')+
     ' onclick="toggleTrade(\''+side+'\','+idx+')"><i style="background:'+deedColor(sq)+'"></i>'+
-    escapeHtml(sq.name)+(sq.mortgaged?' <span class="mortTag">M</span>':'')+'</button>';
+    escapeHtml(sq.name)+(locked?' 🛖':'')+(sq.mortgaged?' <span class="mortTag">M</span>':'')+'</button>';
 }
 function renderTrade(){
   const me=curP(), them=G_STATE.players[TRADE.with];
   if(!them)return;
-  const mine=tradableIdx(me.id), theirs=tradableIdx(them.id);
+  const mine=ownedIdx(me.id), theirs=ownedIdx(them.id);
   let html='<div class="trHead">🤝 Trade with '+escapeHtml(them.name)+'</div>'+
     '<div class="trSub">Swap deeds to complete a colour set — then you can build.</div><div class="trCols">'+
     '<div class="trCol"><h4>'+me.tok.ico+' You give</h4><div class="trChips">'+

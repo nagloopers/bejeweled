@@ -85,7 +85,7 @@ window.GAMES = [
   {
     slug: "barnyard-bonanza",
     title: "Barnyard Bonanza",
-    description: "A Monopoly-style farm fortune race — buy pastures & barns, collect rent, dodge Fox Alerts, hot-seat for 2-4 farmers.",
+    description: "A Monopoly-style farm fortune race — buy pastures, trade deeds, raise barns and dodge Fox Alerts. Hot-seat for 2-4 farmers.",
     src: "games/barnyard-bonanza/index.html",
     cover: "games/barnyard-bonanza/cover.png",
     tag: "board"
