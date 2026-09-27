@@ -35,10 +35,30 @@ stand upright facing the camera. Drag to orbit, scroll to zoom.
 | 🌉 **Rope Bridge** | A shortcut clean across the field (14→23, 32→41) |
 | 🌪️ **Twister** | Whirls you to a random tile — forwards *or* backwards |
 | 🐔 **Coop** | Buy livestock |
+| ⚙️ **The Old Mill** | Dead centre of the field — grinds every ripe crop you own at **+60%** |
 | 🎪 **County Fair** | Draw a Farm Card |
 | 🏚️ **The Big Barn** | Crossing it pays **+120** and banks a run |
 
 Plots also have **soil quality**: ✨ rich soil pays **+50%**, 🪨 rocky soil costs **+1 day**.
+
+## The middle of the field
+
+Tile 25 — the exact centre of the serpentine, and the hardest square on the board to land on by
+design — is **The Old Mill**. It is not an emoji: it is a real windmill built out of divs, with a
+stone tower, a red cap, a lit window, a rooster weathervane and **four latticed sails that never
+stop turning**, throwing a turning shadow across the soil beneath them.
+
+- The sails **turn at the speed of the weather** — barely moving in a drought, lazy in sun,
+  brisk in rain, and whipping round in a storm. You can read the forecast from across the board.
+- **Roll past it** and the miller works the sails up for you as you go.
+- **Land on it** and the millstones grind: the sails race, the tower judders, the window blazes,
+  flour billows out of the door, and **every ripe crop you own is milled into flour at +60%** —
+  the best price on the farm, better than the market's +25%.
+- Nothing ripe? Sweep the millstones for the miller and pocket **+40**.
+
+Every other bare plot now carries something small of its own, too — daisies, a mushroom, a stone,
+a ladybird, a snail — which vanishes the moment you plant there and comes back when the field is
+cleared.
 
 ## The farming loop
 
@@ -113,9 +133,29 @@ twister that flings you back past the barn earns a consolation +40 rather than a
 
 ## A field that never sits still
 
+- **Barnstorming.** Every half minute or so a **biplane beats up the farm** — it crosses the sky
+  trailing a ribbon of smoke, drags its **shadow across the tilted field** below, and often rolls
+  into a **loop-the-loop** over the mill while the whole yard stops to look up. It flies a victory
+  pass when someone calls the Final Day, and two when the season is won.
+- **The Old Mill turns all game**, at the speed of the weather, and grinds in a shaking, blazing,
+  flour-belching fit when someone lands on it.
+- **Rain lands where you can see it** — rings of splash spread over the tiles all through a shower,
+  and harder in a storm.
+- **Lightning forks over the hills**, a real jagged bolt, not just a white flash.
+- **Dust devils skitter across parched ground** in a drought, and the soil bed cracks.
+- **The tractor tile actually tows you** — a tractor hitches on behind your piece, jiggling and
+  blowing smoke, for the whole three-tile ride.
+- **The gopher shows its face**, popping out of the hole to watch you tumble backwards.
+- **The twister is a funnel you can see**, spinning up on the tile before it takes you.
+- **Crows drop in** on a field that has just been scrumped.
+- **A six lights up the die** in a burst of gold and sparks.
 - **Wind gusts** roll across the board every 20 seconds or so — and on every storm, shower and
   twister. Every crop, animal and tree leans out of the way in a wave, and leaves blow past.
-- **Butterflies, bees and birds** drift over the field at different heights, wings flapping.
+- **The wildlife is built, not borrowed.** Butterflies, bees, dragonflies and swallows are made
+  of divs — a body, a head, antennae, and wings **hinged on the body that swing about the Y axis**,
+  so they fold and open in real perspective instead of being a flat sprite that squashes. Each one
+  **drags its own shadow across the soil**, swelling and darkening as it drops towards the field,
+  which is what actually sells the height. They lean into their turns as they wander.
 - **Livestock hop and speak** on their own, and the idle chatter picks a real animal off the
   board — so what you hear is always something you can see.
 - **Dawn ripples the field awake** row by row, and every crop that comes ripe bursts a golden ring.
@@ -143,18 +183,39 @@ either: hovering one and the dawn sweep both light it up rather than raising it.
 moves is something standing *on* the board, never the board underneath it — and a headless audit
 samples the five transform variables throughout a full game to keep it that way.
 
-## Sound
+## Sound — a farm you are standing in the middle of
 
-Everything you hear is **synthesised with Web Audio — there are no sound files**. Thirteen animal
-voices (cluck, moo, oink, baa, quack, neigh, bleat, bark, gobble, crow, birdsong, crickets, bees)
+Everything you hear is **synthesised with Web Audio — there are no sound files**. Eighteen animal
+voices (cluck, moo, oink, baa, quack, neigh, bleat, bark, gobble, crow, goose honk, donkey bray,
+wood-pigeon coo, cowbell, birdsong, crickets, bees, a tractor working a field two hedges over)
 plus dice rattle, hop thumps, soil pokes, water splashes, harvest chimes, coin blips, market
-bells, tractor engine, gopher squeak, twister roar, thunder over a looping rain bed, a victory
+bells, tractor engine, gopher squeak, twister roar, thunder over a looping rain bed, the low
+grind of the millstones, the rising-and-falling drone of a biplane passing overhead, a victory
 fanfare, and a procedural pentatonic banjo loop for music.
 
-The farm is **noisy on purpose**: a rooster calls every sunrise, your whole herd sings and hops at
-payday, and animals react to planting, harvesting, tractors, bridges, twisters and market bells.
-A headless audit counts **over 100 animal calls in a ten-day game**, on top of ambience every
-couple of seconds.
+The ambience is a proper soundscape rather than a list of effects:
+
+- **An outdoor bed runs the whole time** — brown noise through a low-pass, breathing on a very
+  slow LFO. It is the thing you stop hearing after ten seconds and miss the moment it stops. It
+  ducks under a shower and gets out of the way entirely in a storm.
+- **Every call is placed.** Each voice goes through its own gain and stereo panner, and when the
+  sound belongs to something on the board — your cow, the dog in the yard, a goose on the verge —
+  **the pan and the distance are read straight off where it is standing**. You hear the cow where
+  the cow is.
+- **Call and response.** Better than half of all calls are answered from the other side of the
+  field a beat later, by something that would plausibly answer: a cow gets a cowbell, a goose gets
+  a goose, a rooster sets the dog off. That is the whole trick — it is what stops a farm sounding
+  like a playlist.
+- **The whole yard kicks off** every half minute or so, and on a barn run.
+- **Dawn is a dawn chorus** — a rooster, an answer from the far side, then seven birds waking up
+  across the stereo field, then the herd.
+- **The weather stirs them.** A storm winds the animals up and brings them closer; rain and
+  drought settle them down.
+- Animals still hop when they speak, so **what you hear is always something you can see**.
+
+A headless audit counts **42 placed animal calls in thirty seconds**, spread across the full
+stereo field, on top of the bed. <kbd>M</kbd> mutes everything; 🎵 toggles just the music — and if
+you start a season muted, the game says so.
 
 ## Architecture
 

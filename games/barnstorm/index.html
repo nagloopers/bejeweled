@@ -355,7 +355,11 @@ h1,h2,h3,h4,p{margin:0}
   12%{opacity:.95}
   100%{transform:translate(var(--lx),var(--ly)) rotate(var(--lr));opacity:0}}
 
-/* butterflies, bees and birds drifting over the field */
+/* butterflies, bees, dragonflies and birds drifting over the field.
+   These are not emoji: each one is built from divs with two (or four) wings
+   hinged on the body and flapping about the Y axis inside the billboard, so
+   they open and close in real perspective — and each drags a shadow across
+   the soil below, which is what actually sells the height. */
 #flyers{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
 .flyer{position:absolute;width:0;height:0;transform-style:preserve-3d;
   animation:flyWander var(--ft,24s) ease-in-out infinite}
@@ -365,8 +369,121 @@ h1,h2,h3,h4,p{margin:0}
   50% {transform:translate3d(var(--x2),var(--y2),var(--z0))}
   75% {transform:translate3d(var(--x3),var(--y3),var(--z1))}
   100%{transform:translate3d(var(--x0),var(--y0),var(--z0))}}
-.flyer .glyph{animation:wingFlap .42s ease-in-out infinite alternate!important}
-@keyframes wingFlap{from{transform:scaleX(1) rotate(-7deg)}to{transform:scaleX(.6) rotate(7deg)}}
+.flyer .bb{transform-style:preserve-3d}
+
+/* the shadow: same ground track, but flat on the soil, and it swells and
+   darkens as its owner drops towards the field */
+.bugsh{position:absolute;width:var(--cell);height:calc(var(--cell)*.42);
+  margin:calc(var(--cell)*-.21) 0 0 calc(var(--cell)*-.5);
+  border-radius:50%;background:rgba(24,16,4,.42);filter:blur(4px);
+  animation:bugShadow var(--ft,24s) ease-in-out infinite}
+@keyframes bugShadow{
+  0%  {transform:translate3d(var(--x0),var(--y0),calc(var(--h) + 1px)) scale(var(--s0));opacity:var(--o0)}
+  25% {transform:translate3d(var(--x1),var(--y1),calc(var(--h) + 1px)) scale(var(--s1));opacity:var(--o1)}
+  50% {transform:translate3d(var(--x2),var(--y2),calc(var(--h) + 1px)) scale(var(--s0));opacity:var(--o0)}
+  75% {transform:translate3d(var(--x3),var(--y3),calc(var(--h) + 1px)) scale(var(--s1));opacity:var(--o1)}
+  100%{transform:translate3d(var(--x0),var(--y0),calc(var(--h) + 1px)) scale(var(--s0));opacity:var(--o0)}}
+
+/* ---- the creature itself ---- */
+.bug{position:relative;display:inline-block;transform-style:preserve-3d;
+  width:var(--bw);height:var(--bw);
+  animation:bugBank var(--ft,24s) ease-in-out infinite}
+/* it leans into its turns and bobs on the air */
+@keyframes bugBank{
+  0%,100%{transform:translateY(0) rotate(-9deg)}
+  18%{transform:translateY(-14%) rotate(8deg)}
+  42%{transform:translateY(6%) rotate(-6deg)}
+  67%{transform:translateY(-10%) rotate(10deg)}
+  86%{transform:translateY(4%) rotate(-4deg)}}
+.bug .bod{position:absolute;left:50%;top:18%;width:13%;height:60%;margin-left:-6.5%;
+  transform:translateZ(1.5px);
+  border-radius:44% 44% 50% 50%/30% 30% 70% 70%;
+  background:var(--body,linear-gradient(180deg,#6a5238,#241b10));
+  box-shadow:0 0 0 .5px rgba(0,0,0,.4),inset -1px 0 1px rgba(255,255,255,.25)}
+.bug .hd{position:absolute;left:50%;top:9%;width:19%;height:19%;margin-left:-9.5%;
+  border-radius:50%;background:var(--head,#372a1c);transform:translateZ(2px);
+  box-shadow:inset -1px -1px 1px rgba(0,0,0,.4)}
+/* antennae */
+.bug .hd::before,.bug .hd::after{content:"";position:absolute;top:-52%;width:9%;height:60%;
+  background:var(--head,#372a1c);border-radius:2px}
+.bug .hd::before{left:18%;transform:rotate(-24deg)}
+.bug .hd::after{right:18%;transform:rotate(24deg)}
+/* a wing is hinged on the body and swings about the vertical axis */
+.bug .w{position:absolute;top:8%;width:45%;height:76%;
+  background:var(--wing,linear-gradient(135deg,#ffb45c,#ff7a3d));
+  box-shadow:0 0 0 .6px rgba(48,30,10,.5);
+  backface-visibility:visible;
+  animation:wingL var(--beat,.32s) ease-in-out infinite alternate}
+.bug .w.l{right:50%;transform-origin:right center;
+  border-radius:68% 22% 34% 60%/62% 24% 40% 64%}
+.bug .w.r{left:50%;transform-origin:left center;animation-name:wingR;
+  border-radius:22% 68% 60% 34%/24% 62% 64% 40%}
+@keyframes wingL{from{transform:rotateY(58deg)}to{transform:rotateY(-12deg)}}
+@keyframes wingR{from{transform:rotateY(-58deg)}to{transform:rotateY(12deg)}}
+
+/* ---- butterfly: a pointed forewing, a rounder hindwing, and eyespots ---- */
+.bug.bfly{--beat:.30s}
+.bug.bfly .w{top:2%;width:52%;height:52%;
+  box-shadow:0 0 0 .7px rgba(40,24,6,.6),inset 0 0 6px rgba(0,0,0,.14)}
+.bug.bfly .w.l{border-radius:86% 26% 30% 64%/76% 30% 40% 70%}
+.bug.bfly .w.r{border-radius:26% 86% 64% 30%/30% 76% 70% 40%}
+/* the hindwing hangs off the back of the forewing and swings with it */
+.bug.bfly .w::after{content:"";position:absolute;width:82%;height:84%;top:74%;
+  background:inherit;filter:brightness(.86) saturate(1.1);
+  box-shadow:0 0 0 .7px rgba(40,24,6,.55)}
+.bug.bfly .w.l::after{right:0;border-radius:72% 34% 42% 78%/56% 40% 70% 64%}
+.bug.bfly .w.r::after{left:0;border-radius:34% 72% 78% 42%/40% 56% 64% 70%}
+.bug.bfly .w::before{content:"";position:absolute;left:24%;top:22%;
+  width:36%;height:30%;border-radius:50%;z-index:2;
+  background:var(--spot,rgba(255,255,255,.75));opacity:.9}
+
+/* ---- bee: small, furry, striped, and a blur of wings ---- */
+.bug.bee{--beat:.07s}
+.bug.bee .bod{width:34%;height:52%;margin-left:-17%;top:24%;border-radius:46%;
+  background:repeating-linear-gradient(-14deg,#ffcf3f 0 26%,#241b10 26% 50%);
+  box-shadow:0 0 0 .5px rgba(0,0,0,.45),inset -1px -1px 2px rgba(0,0,0,.35)}
+.bug.bee .hd{width:26%;height:26%;margin-left:-13%;top:10%;background:#2a2016}
+.bug.bee .w{top:2%;width:38%;height:44%;opacity:.55;
+  background:linear-gradient(135deg,rgba(255,255,255,.95),rgba(198,228,255,.4));
+  border-radius:60% 40% 50% 50%/70% 40% 60% 30%}
+.bug.bee .w.r{border-radius:40% 60% 50% 50%/40% 70% 30% 60%}
+.bug.bee .w::before,.bug.bee .w::after{display:none}
+
+/* ---- dragonfly: four long wings and a needle of a body ---- */
+.bug.dfly{--beat:.09s}
+.bug.dfly .bod{width:9%;height:82%;margin-left:-4.5%;top:16%;border-radius:40%;
+  background:linear-gradient(180deg,#7ff0d0,#2a9d8f 45%,#1d5c62)}
+.bug.dfly .hd{width:22%;height:22%;margin-left:-11%;top:6%;
+  background:radial-gradient(circle at 36% 32%,#bffff0,#2a9d8f)}
+.bug.dfly .hd::before,.bug.dfly .hd::after{display:none}
+.bug.dfly .w{top:14%;width:56%;height:26%;opacity:.62;border-radius:50%;
+  background:linear-gradient(120deg,rgba(255,255,255,.92),rgba(180,240,255,.35));
+  box-shadow:0 0 0 .5px rgba(60,120,130,.45)}
+.bug.dfly .w2{top:40%;width:50%;height:22%;animation-duration:.11s}
+.bug.dfly .w::before,.bug.dfly .w::after{display:none}
+
+/* ---- bird: a swallow — dark swept wings, pale breast, forked tail ---- */
+.bug.bird{--beat:.40s}
+.bug.bird .bod{width:30%;height:48%;margin-left:-15%;top:24%;
+  border-radius:52% 52% 40% 40%/44% 44% 66% 66%;
+  background:linear-gradient(170deg,#fdfbf6 0 52%,#6d7f93 52%,#3f4d5e);
+  box-shadow:0 1px 2px rgba(0,0,0,.35)}
+/* the fork of the tail */
+.bug.bird .bod::after{content:"";position:absolute;left:50%;top:86%;
+  width:150%;height:80%;margin-left:-75%;
+  background:linear-gradient(180deg,#4d5c6e,#2d3846);
+  clip-path:polygon(38% 0,62% 0,100% 100%,62% 56%,38% 56%,0 100%)}
+.bug.bird .hd{width:30%;height:30%;margin-left:-15%;top:6%;
+  background:radial-gradient(circle at 38% 30%,#fdfbf6 0 42%,#2f3c4b 44%)}
+.bug.bird .hd::before{left:-16%;top:40%;width:28%;height:16%;
+  background:#f0a93c;transform:rotate(-4deg);border-radius:2px 60% 60% 2px}
+.bug.bird .hd::after{display:none}
+.bug.bird .w{top:12%;width:66%;height:34%;
+  background:linear-gradient(140deg,#7b8da2,#3c4a5b 62%,#27313d);
+  box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.bug.bird .w.l{border-radius:96% 10% 34% 70%/92% 16% 30% 78%}
+.bug.bird .w.r{border-radius:10% 96% 70% 34%/16% 92% 78% 30%}
+.bug.bird .w::before,.bug.bird .w::after{display:none}
 
 /* an animal noticing you, in time with its voice */
 .bb.speak .glyph{animation:speakHop .72s cubic-bezier(.2,1.5,.4,1)!important}
@@ -431,6 +548,211 @@ h1,h2,h3,h4,p{margin:0}
 .shockwave{position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;
   border:3px solid rgba(255,236,170,.9);animation:shock .7s ease-out forwards}
 @keyframes shock{to{transform:scale(7);opacity:0;border-width:1px}}
+
+/* ============================================================
+   2b. THE OLD MILL — the landmark at the dead centre of the field
+   Built out of divs rather than an emoji so the sails really turn,
+   and so the shadow they throw on the soil turns with them.
+   ============================================================ */
+.bb.millbb{height:calc(var(--cell)*.98);pointer-events:none}
+.mill{position:absolute;left:0;right:0;bottom:0;top:0;
+  transform:scale(var(--mscale,.88));transform-origin:50% 100%;
+  transition:opacity .3s ease}
+/* a landmark this tall stands in front of the tiles behind it, so it turns
+   to glass the moment you need to look at one of them */
+.mill.ghost{opacity:.2}
+.mill .plinth{position:absolute;left:50%;bottom:calc(var(--cell)*-.015);
+  width:calc(var(--cell)*.44);height:calc(var(--cell)*.085);margin-left:calc(var(--cell)*-.22);
+  border-radius:50%;background:linear-gradient(180deg,#c2a97e,#7d6844);
+  box-shadow:0 3px 7px rgba(0,0,0,.45)}
+.mill .tower{position:absolute;left:50%;bottom:calc(var(--cell)*.01);
+  width:calc(var(--cell)*.38);height:calc(var(--cell)*.52);margin-left:calc(var(--cell)*-.19);
+  clip-path:polygon(29% 0,71% 0,100% 100%,0 100%);
+  background:
+    linear-gradient(180deg,transparent 0 84%,rgba(104,64,32,.55) 84% 100%),
+    linear-gradient(180deg,transparent 0 55%,rgba(150,66,52,.55) 55% 62%,transparent 62%),
+    repeating-linear-gradient(0deg,rgba(116,86,48,.2) 0 1px,transparent 1px calc(var(--cell)*.048)),
+    linear-gradient(100deg,#fffdf7 0%,#f6e8cc 26%,#dcc296 58%,#a8854f 86%,#7d6035 100%);
+  filter:drop-shadow(0 0 1px rgba(72,48,20,.85)) drop-shadow(0 6px 8px rgba(0,0,0,.42))}
+.mill .cap{position:absolute;left:50%;bottom:calc(var(--cell)*.505);
+  width:calc(var(--cell)*.46);height:calc(var(--cell)*.19);margin-left:calc(var(--cell)*-.23);
+  clip-path:polygon(50% 0,100% 100%,0 100%);
+  background:linear-gradient(105deg,#e2786b,#b3453c 55%,#7a2620);
+  filter:drop-shadow(0 0 1px rgba(60,20,16,.8)) drop-shadow(0 4px 5px rgba(0,0,0,.35))}
+.mill .vane{position:absolute;left:50%;bottom:calc(var(--cell)*.685);
+  width:calc(var(--cell)*.24);margin-left:calc(var(--cell)*-.12);text-align:center;
+  font-size:calc(var(--cell)*.13);line-height:1;transform-origin:50% 100%;
+  animation:vaneTurn 9s ease-in-out infinite;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4))}
+@keyframes vaneTurn{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+.mill .door{position:absolute;left:50%;bottom:calc(var(--cell)*.015);
+  width:calc(var(--cell)*.105);height:calc(var(--cell)*.15);margin-left:calc(var(--cell)*-.0525);
+  border-radius:calc(var(--cell)*.055) calc(var(--cell)*.055) 0 0;
+  background:linear-gradient(180deg,#7b5330,#3c2413);
+  box-shadow:inset 0 0 0 1px rgba(255,238,204,.35)}
+.mill .win{position:absolute;left:50%;bottom:calc(var(--cell)*.30);
+  width:calc(var(--cell)*.075);height:calc(var(--cell)*.075);margin-left:calc(var(--cell)*-.0375);
+  border-radius:50%;background:radial-gradient(circle at 40% 34%,#fff8dd,#f2c76b 58%,#8a6327);
+  box-shadow:0 0 calc(var(--cell)*.13) rgba(255,205,110,.7),0 0 0 1px rgba(90,62,24,.6);
+  transition:box-shadow .3s ease}
+/* four latticed sails on a hub that never stops turning */
+.mill .sails{position:absolute;left:50%;bottom:calc(var(--cell)*.525);
+  width:0;height:0;animation:spin var(--millspin,9s) linear infinite}
+.mill .sails i{position:absolute;left:0;top:0;
+  width:calc(var(--cell)*.075);height:calc(var(--cell)*.34);
+  margin-left:calc(var(--cell)*-.0375);transform-origin:50% 0;
+  clip-path:polygon(28% 0,72% 0,100% 100%,0 100%);
+  background:
+    repeating-linear-gradient(0deg,rgba(132,96,52,.7) 0 1px,transparent 1px calc(var(--cell)*.028)),
+    repeating-linear-gradient(90deg,rgba(132,96,52,.7) 0 1px,transparent 1px calc(var(--cell)*.026)),
+    linear-gradient(95deg,#fffdf6,#f2e3c2 60%,#d4bb90);
+  filter:drop-shadow(0 0 1px rgba(90,64,28,.9)) drop-shadow(0 3px 5px rgba(0,0,0,.3))}
+.mill .sails i:nth-child(1){transform:rotate(12deg)}
+.mill .sails i:nth-child(2){transform:rotate(102deg)}
+.mill .sails i:nth-child(3){transform:rotate(192deg)}
+.mill .sails i:nth-child(4){transform:rotate(282deg)}
+.mill .hub{position:absolute;left:50%;bottom:calc(var(--cell)*.487);
+  width:calc(var(--cell)*.076);height:calc(var(--cell)*.076);margin-left:calc(var(--cell)*-.038);
+  border-radius:50%;background:radial-gradient(circle at 36% 32%,#fff,#c9a15c 58%,#6d5226);
+  box-shadow:0 2px 4px rgba(0,0,0,.45)}
+/* flour dust drifting out of the mill door */
+.mill .flour{position:absolute;left:50%;bottom:calc(var(--cell)*.05);width:0;height:0}
+.mill .flour i{position:absolute;left:calc(var(--cell)*-.03);bottom:0;
+  width:calc(var(--cell)*.06);height:calc(var(--cell)*.06);border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.95),rgba(246,234,210,.3));
+  animation:flourDrift 5.2s ease-out infinite;opacity:0}
+@keyframes flourDrift{
+  0%{transform:translate(0,0) scale(.3);opacity:0}
+  16%{opacity:.7}
+  100%{transform:translate(var(--fx,14px),calc(var(--cell)*-.5)) scale(2.3);opacity:0}}
+/* grinding: the sails race, the tower judders, the window blazes */
+.mill.grind .sails{animation-duration:.5s}
+.mill.grind .tower,.mill.grind .cap{animation:millShake .09s linear infinite}
+@keyframes millShake{0%,100%{transform:translateX(0)}50%{transform:translateX(1.5px)}}
+.mill.grind .win{box-shadow:0 0 calc(var(--cell)*.34) rgba(255,214,120,1),0 0 0 1px rgba(90,62,24,.6)}
+.mill.grind .flour i{animation-duration:1.5s}
+/* the shadow of the sails, lying flat on the soil and turning with them */
+.millsh{position:absolute;left:50%;top:50%;
+  width:calc(var(--cell)*.72);height:calc(var(--cell)*.72);
+  margin:calc(var(--cell)*-.36) 0 0 calc(var(--cell)*-.36);
+  background:
+    linear-gradient(102deg,transparent 45.8%,rgba(40,24,8,.32) 45.8% 54.2%,transparent 54.2%),
+    linear-gradient(12deg,transparent 45.8%,rgba(40,24,8,.32) 45.8% 54.2%,transparent 54.2%);
+  border-radius:50%;filter:blur(2px);
+  animation:spin var(--millspin,9s) linear infinite reverse}
+/* the same mill, shrunk into the legend and the inspector */
+.millicon{position:relative;display:inline-block;width:26px;height:30px;--cell:30px;
+  vertical-align:middle;flex:0 0 auto}
+.millicon .flour,.millicon .millsh{display:none}
+
+/* ---- wildflowers, mushrooms and odds and ends on empty soil ------------ */
+.bb.litter{transform:rotateZ(var(--nyaw)) rotateX(var(--ntilt)) translateX(var(--litx,0px))}
+.bb.litter .glyph{font-size:calc(var(--cell)*.23);opacity:.8;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.34))}
+
+/* ============================================================
+   2c. BARNSTORMING — a biplane beating up the farm
+   ============================================================ */
+.plane{position:fixed;left:0;top:var(--pty,20vh);z-index:5;pointer-events:none;
+  animation:planeCross var(--pt,13s) linear forwards}
+@keyframes planeCross{from{transform:translateX(-20vw)}to{transform:translateX(120vw)}}
+.plane .rig{display:block;animation:planeBank var(--pt,13s) ease-in-out forwards}
+@keyframes planeBank{
+  0%{transform:translateY(0) rotate(0)}
+  28%{transform:translateY(-4vh) rotate(-7deg)}
+  62%{transform:translateY(3vh) rotate(6deg)}
+  100%{transform:translateY(-1vh) rotate(0)}}
+.plane.loop .rig{animation:planeLoop var(--pt,13s) cubic-bezier(.4,0,.6,1) forwards}
+@keyframes planeLoop{
+  0%,36%{transform:translateY(0) rotate(0)}
+  42%{transform:translateY(-7vh) rotate(-115deg)}
+  48%{transform:translateY(-12vh) rotate(-215deg)}
+  55%{transform:translateY(-5vh) rotate(-320deg)}
+  62%,100%{transform:translateY(0) rotate(-360deg)}}
+.plane .glyph{display:block;font-size:38px;filter:drop-shadow(0 8px 12px rgba(0,0,0,.32))}
+.psmoke{position:fixed;z-index:4;pointer-events:none;width:13px;height:13px;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,rgba(255,255,255,.95),rgba(248,244,236,.3));
+  animation:smokePuff 2.8s ease-out forwards}
+@keyframes smokePuff{0%{transform:scale(.35);opacity:.9}
+  100%{transform:scale(3.4) translateY(-20px);opacity:0}}
+/* the shadow it drags across the field */
+.planesh{position:absolute;width:calc(var(--cell)*.78);height:calc(var(--cell)*.36);
+  margin:calc(var(--cell)*-.18) 0 0 calc(var(--cell)*-.39);border-radius:50%;
+  background:rgba(22,14,4,.28);filter:blur(3px);
+  transform:translateZ(calc(var(--h) + 3px));
+  animation:planeShadow var(--pt,13s) linear forwards}
+@keyframes planeShadow{from{left:-34%;top:14%}to{left:134%;top:78%}}
+
+/* ---- weather made visible on the soil itself -------------------------- */
+.splash{position:absolute;width:0;height:0;transform:translateZ(calc(var(--h) + 2px))}
+.splash i{position:absolute;left:0;top:0;width:15px;height:11px;margin:-5px 0 0 -7px;
+  border-radius:50%;border:2.5px solid rgba(221,246,255,.95);
+  box-shadow:0 0 7px rgba(150,216,255,.7),inset 0 0 5px rgba(180,230,255,.55);
+  animation:splashRing .72s ease-out forwards}
+@keyframes splashRing{to{transform:scale(3.6);opacity:0;border-width:1px}}
+/* a dust devil skittering over a parched field */
+.devil{position:absolute;width:0;height:0;transform-style:preserve-3d;
+  animation:devilRun var(--dvt,7s) linear forwards}
+@keyframes devilRun{from{transform:translate3d(var(--dx0),var(--dy0),calc(var(--h) + 2px))}
+  to{transform:translate3d(var(--dx1),var(--dy1),calc(var(--h) + 2px))}}
+.devil .col{position:absolute;left:calc(var(--cell)/-2);bottom:0;width:var(--cell);
+  text-align:center;transform-origin:50% 100%;filter:blur(2px);
+  transform:rotateZ(var(--nyaw)) rotateX(var(--ntilt))}
+.devil .col i{display:block;margin:0 auto;border-radius:50%;
+  background:radial-gradient(circle at 42% 36%,rgba(252,238,208,.92),rgba(206,176,126,.45));
+  box-shadow:0 1px 4px rgba(120,92,50,.35);
+  animation:devilWob 1s ease-in-out infinite}
+@keyframes devilWob{0%,100%{transform:translateX(-24%) scaleX(.86)}
+  50%{transform:translateX(24%) scaleX(1.14)}}
+#bed.parched::after{border-color:rgba(255,236,190,.14);
+  background:
+    repeating-linear-gradient(64deg,rgba(60,38,12,.10) 0 2px,transparent 2px 26px),
+    repeating-linear-gradient(-51deg,rgba(60,38,12,.09) 0 2px,transparent 2px 33px)}
+/* a bolt of lightning, not just a flash */
+#bolt{position:absolute;top:0;width:110px;height:46vh;opacity:0;pointer-events:none;
+  filter:drop-shadow(0 0 16px rgba(190,226,255,.95))}
+#bolt path{fill:#f3fbff;stroke:rgba(150,205,255,.9);stroke-width:2}
+#bolt.go{animation:boltFlash .62s ease-out}
+@keyframes boltFlash{0%{opacity:0}8%{opacity:1}22%{opacity:.15}34%{opacity:.95}100%{opacity:0}}
+
+/* ---- things that happen to a farmer ----------------------------------- */
+/* a tractor hitched on behind, blowing smoke */
+.bb.tow{left:calc(var(--cell)*-1.05);width:var(--cell)}
+.bb.tow .glyph{font-size:calc(var(--cell)*.4);animation:towJig .28s ease-in-out infinite alternate}
+@keyframes towJig{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-8%) rotate(3deg)}}
+/* a gopher having a good look at what it just did */
+.molepop .glyph{font-size:calc(var(--cell)*.34);animation:molePop 1.5s ease-out forwards}
+@keyframes molePop{
+  0%{transform:translateY(60%) scale(.3);opacity:0}
+  18%{transform:translateY(-14%) scale(1.1);opacity:1}
+  34%{transform:translateY(0) scale(1)}
+  52%{transform:translateY(-22%) rotate(-12deg)}
+  70%{transform:translateY(0) rotate(9deg)}
+  100%{transform:translateY(70%) scale(.5);opacity:0}}
+/* the twister itself, standing on the tile it is about to empty */
+.funnel .glyph{font-size:calc(var(--cell)*.95);animation:funnelUp 1.3s ease-out forwards}
+@keyframes funnelUp{
+  0%{transform:scale(.15) rotate(0);opacity:0}
+  22%{opacity:1}
+  70%{transform:scale(1.2) rotate(480deg);opacity:.95}
+  100%{transform:scale(.5) rotate(760deg);opacity:0}}
+/* crows dropping in on a scrumped field */
+.crowfly{position:fixed;z-index:29;font-size:21px;pointer-events:none;
+  animation:crowSwoop 1.6s cubic-bezier(.4,.05,.5,1) forwards}
+@keyframes crowSwoop{
+  0%{transform:translate(var(--ax),var(--ay)) scale(.4) rotate(0);opacity:0}
+  22%{opacity:1}
+  55%{transform:translate(0,0) scale(1.15) rotate(-8deg)}
+  100%{transform:translate(var(--bx),var(--by)) scale(.45) rotate(14deg);opacity:0}}
+/* a six on the die is worth showing off */
+.die-scene.six{animation:sixGlow 1.1s ease-out}
+@keyframes sixGlow{0%{filter:none}
+  26%{filter:drop-shadow(0 0 20px rgba(255,209,102,1)) drop-shadow(0 0 40px rgba(255,166,43,.8))}
+  100%{filter:none}}
+/* a scarecrow keeping the weather off */
+.bb.scare{left:calc(var(--cell)*.18);width:calc(var(--cell)*.6)}
+.bb.scare .glyph{font-size:calc(var(--cell)*.26);opacity:.9;
+  animation:scareSway 3.4s ease-in-out infinite}
+@keyframes scareSway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
 
 /* ============================================================
    3. UI CHROME — topbar, player cards, dock, dice
@@ -720,6 +1042,9 @@ h1,h2,h3,h4,p{margin:0}
   <div class="cloud cl1"></div><div class="cloud cl2"></div>
   <div class="cloud cl3"></div><div class="cloud cl4"></div>
   <div class="bird bd1"><i>🕊️</i></div><div class="bird bd2"><i>🐦</i></div>
+  <svg id="bolt" viewBox="0 0 100 300" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M58,0 L22,132 L54,132 L14,300 L74,124 L40,124 L78,0 Z"/>
+  </svg>
 </div>
 <div id="far">
   <div class="hill h1"></div><div class="hill h2"></div><div class="hill h3"></div>
@@ -866,6 +1191,14 @@ h1,h2,h3,h4,p{margin:0}
           or be neighbourly and take a 25 coin tip instead.</li>
         <li>Land on a rival's young crop → lend a hand for a <em>15 coin tip</em>.</li>
       </ul></div>
+      <div class="hbox"><b>⚙️ The Old Mill</b><ul>
+        <li>A real windmill stands on <em>tile 25</em>, dead centre of the field, and its sails
+          turn with the weather — lazy in a drought, racing in a storm.</li>
+        <li>Land on it and it <em>grinds every ripe crop you own into flour</em> at <em>+60%</em>
+          — the best price anywhere on the farm, and better than the market.</li>
+        <li>Nothing ripe? Sweep the millstones for the miller and take <em>+40</em>.</li>
+        <li>It sits at the hardest spot on the track to hit on purpose, so plan a lap around it.</li>
+      </ul></div>
       <div class="hbox"><b>☀️ Weather &amp; days</b><ul>
         <li>A <em>day passes</em> when every farmer has had a turn.</li>
         <li>Each dawn, crops grow by the weather: sun +1, rain +2, drought 0, storm +1 (and one crop may be flattened), rainbow +2 and richer harvests.</li>
@@ -877,10 +1210,13 @@ h1,h2,h3,h4,p{margin:0}
         <li>Chicken 🐔 · Sheep 🐑 · Pig 🐖 · Cow 🐄 — each louder and richer than the last.</li>
       </ul></div>
       <div class="hbox"><b>🔊 The farmyard</b><ul>
-        <li>Every animal has a voice, and they answer to <em>everything</em> — dawn, harvests,
+        <li>Eighteen animals have a voice, and they answer to <em>everything</em> — dawn, harvests,
           purchases, tractors, twisters and quiet moments in between.</li>
-        <li>A rooster calls up <em>every sunrise</em>, and your whole herd sings at payday.</li>
-        <li>The idle chatter picks real animals off the board, so what you hear is what you see.</li>
+        <li>Every call is <em>placed</em>: you hear the cow where the cow is standing, and the
+          goose on the far verge sounds like it is on the far verge.</li>
+        <li>Most calls get <em>answered</em> from the other side of the field a beat later.</li>
+        <li>Dawn is a proper <em>dawn chorus</em>, and the whole yard kicks off on a barn run.</li>
+        <li>A storm winds the animals up; rain and drought settle them down.</li>
         <li><kbd>M</kbd> mutes everything; 🎵 toggles just the music.</li>
       </ul></div>
       <div class="hbox"><b>🪨 Soil quality</b><ul>
@@ -983,13 +1319,17 @@ const KINDS = {
            desc:"Draw a Farm Card — fortune or misfortune."},
   barn:   {emoji:"🏚️", name:"The Big Barn", top:"linear-gradient(145deg,#d4645a,#a3403a)",
            desc:"The finish line. Reaching it banks +150 and calls the Final Day."},
+  mill:   {emoji:"⚙️", name:"The Old Mill", top:"linear-gradient(145deg,#e6cfa4,#b5946a)",
+           desc:"Dead centre of the field. Grinds every ripe crop you own into flour at +60% — the best price on the farm."},
 };
+/* the mill stands on the middle tile of the middle row */
+const MILL_I = 24;
 
 const LAYOUT = [
   "gate","plot","plot","well","plot","fair","plot",
   "plot","tractor","plot","gopher","coop","plot","bridge",
   "plot","market","plot","well","plot","plot","twister",
-  "plot","plot","fair","plot","plot","plot","coop",
+  "plot","plot","fair","mill","plot","plot","coop",
   "tractor","plot","plot","bridge","plot","market","plot",
   "plot","plot","plot","gopher","fair","plot","twister",
   "plot","well","plot","coop","tractor","fair","barn",
@@ -1157,7 +1497,8 @@ const SFX = (function(){
     get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } },
     set(k, v){ try { localStorage.setItem(k, v); } catch(e){} },
   };
-  let ctx = null, master = null, musicGain = null, ambGain = null;
+  let ctx = null, master = null, musicGain = null, ambGain = null, voiceBus = null;
+  let bedNode = null, comTimer = null, vbus = null;
   let muted = store.get("bs_mute", "0") === "1";
   let musicOn = store.get("bs_music", "1") !== "0";
   let rainNode = null, windNode = null, musicTimer = null, ambTimer = null;
@@ -1169,9 +1510,11 @@ const SFX = (function(){
     ctx = new AC();
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.85;
     master.connect(ctx.destination);
-    musicGain = ctx.createGain(); musicGain.gain.value = musicOn ? 0.17 : 0;
+    musicGain = ctx.createGain(); musicGain.gain.value = musicOn ? 0.12 : 0;
     musicGain.connect(master);
     ambGain = ctx.createGain(); ambGain.gain.value = 0.3; ambGain.connect(master);
+    /* animals get their own bus so the farm always sits above the banjo */
+    voiceBus = ctx.createGain(); voiceBus.gain.value = 1.4; voiceBus.connect(master);
     return ctx;
   }
   function now(){ return ctx.currentTime; }
@@ -1200,7 +1543,7 @@ const SFX = (function(){
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(v, t0 + (o.atk || .012));
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + (o.dur || .2));
-    node.connect(g); g.connect(o.bus || master);
+    node.connect(g); g.connect(o.bus || vbus || master);
     osc.start(t0); osc.stop(t0 + (o.dur || .2) + .05);
   }
   function noise(o){
@@ -1216,7 +1559,7 @@ const SFX = (function(){
     const g = ctx.createGain();
     g.gain.setValueAtTime(o.vol == null ? .25 : o.vol, t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(bq); bq.connect(g); g.connect(o.bus || master);
+    src.connect(bq); bq.connect(g); g.connect(o.bus || vbus || master);
     src.start(t0); src.stop(t0 + dur + .02);
   }
   /* a plucked "banjo/marimba" note for music + chimes */
@@ -1231,8 +1574,31 @@ const SFX = (function(){
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(vol, t0 + .008);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(bq); osc2.connect(bq); bq.connect(g); g.connect(bus || master);
+    osc.connect(bq); osc2.connect(bq); bq.connect(g); g.connect(bus || vbus || master);
     osc.start(t0); osc.stop(t0 + dur); osc2.start(t0); osc2.stop(t0 + dur);
+  }
+
+  /* ---- placing a sound in the field --------------------------------------
+     Every call gets its own little channel: a gain for how far away it is and
+     a stereo panner for which way it came from. That single change is what
+     turns a list of beeps into a farm you are standing in the middle of. */
+  function spatial(pan, dist){
+    const g = ctx.createGain();
+    g.gain.value = dist == null ? 1 : dist;
+    if (ctx.createStereoPanner){
+      const pn = ctx.createStereoPanner();
+      pn.pan.value = pan < -1 ? -1 : pan > 1 ? 1 : (pan || 0);
+      g.connect(pn); pn.connect(voiceBus);
+    } else g.connect(voiceBus);
+    return g;
+  }
+  /* voices schedule synchronously, so parking the bus around the call is safe */
+  function speak(name, pan, dist){
+    if (!ok() || !voices[name]) return;
+    const prev = vbus;
+    vbus = spatial(pan, dist);
+    try { voices[name](); } catch(e){}
+    vbus = prev;
   }
 
   /* ---- animal voices ---- */
@@ -1272,8 +1638,35 @@ const SFX = (function(){
       noise({filter:"bandpass", fc:4600, q:22, dur:.035, vol:.1, delay:i*.06}); },
     bee(){ tone({type:"sawtooth", f:190, f2:215, dur:.75, vol:.13, filter:"bandpass", fc:420, q:7,
           vibrato:22, vdepth:28}); },
+    honk(){ const b = .94 + Math.random()*.14;                       /* goose */
+      [0,.27].forEach((d,i) => tone({type:"sawtooth", f:[440,385][i]*b, f2:[300,255][i]*b,
+        dur:.25, vol:.3, delay:d, filter:"bandpass", fc:1300, q:3.2, vibrato:11, vdepth:26})); },
+    bray(){                                                          /* donkey: ee-aww */
+      tone({type:"sawtooth", f:520, f2:610, dur:.42, vol:.3, filter:"bandpass", fc:1500, q:2.2,
+            vibrato:19, vdepth:46, atk:.05});
+      tone({type:"sawtooth", f:215, f2:105, dur:.66, vol:.3, delay:.45, filter:"lowpass", fc:780,
+            vibrato:7, vdepth:16, atk:.06});
+      noise({filter:"bandpass", fc:1200, q:1.2, dur:.3, vol:.07, delay:.5}); },
+    coo(){                                                           /* wood pigeon */
+      [0,.21,.44].forEach((d,i) => tone({type:"sine", f:[420,505,430][i], f2:[375,425,360][i],
+        dur:.27, vol:.17, delay:d, filter:"lowpass", fc:700, vibrato:6, vdepth:10, atk:.07})); },
+    cowbell(){ const b = .92 + Math.random()*.2;
+      [0,.18,.33].forEach(d => {
+        tone({type:"square", f:880*b, dur:.13, vol:.1, delay:d, filter:"bandpass", fc:2400, q:6});
+        tone({type:"square", f:1297*b, dur:.1, vol:.07, delay:d + .01, filter:"bandpass", fc:3100, q:7}); }); },
+    farTractor(){ tone({type:"sawtooth", f:57, f2:51, dur:2.4, vol:.08, filter:"lowpass", fc:185,
+      vibrato:8, vdepth:6}); },
   };
-  const BARNYARD = ["cluck","moo","oink","baa","quack","neigh","goat","dog","turkey","crow"];
+  const BARNYARD = ["cluck","moo","oink","baa","quack","neigh","goat","dog","turkey","crow",
+                    "honk","bray","cowbell"];
+  /* who tends to answer whom — a farm is a conversation, not a playlist */
+  const ANSWER = {
+    cluck:["cluck","turkey","crow"], moo:["moo","cowbell","baa"], oink:["oink","cluck"],
+    baa:["baa","cowbell","goat"],    quack:["quack","honk"],      honk:["honk","quack"],
+    neigh:["neigh","bray"],          bray:["bray","neigh"],       goat:["goat","baa"],
+    dog:["dog","cluck","turkey"],    turkey:["turkey","cluck"],   crow:["cluck","dog"],
+    cowbell:["moo","baa"],           coo:["coo","bird"],          bird:["bird","coo"],
+  };
 
   /* ---- the effect library ---- */
   const lib = {
@@ -1333,6 +1726,38 @@ const SFX = (function(){
         tone({type:"triangle", f:f/2, dur:.4, vol:.07, delay:d}); });
       setTimeout(() => voices.crow(), 1250); },
     lose(){ tone({type:"sawtooth", f:330, f2:80, dur:1.1, vol:.2, filter:"lowpass", fc:700, vibrato:6, vdepth:22}); },
+    /* millstones turning: a low grind, a wooden creak, and a hopper of grain */
+    mill(){ if (!ok()) return;
+      tone({type:"sawtooth", f:62, f2:54, dur:1.9, vol:.17, filter:"lowpass", fc:260, vibrato:4.5, vdepth:7});
+      noise({filter:"bandpass", fc:300, fc2:180, q:.8, dur:1.9, vol:.13});
+      [0,.42,.9,1.36].forEach(d => tone({type:"triangle", f:240 + Math.random()*90, f2:150,
+        dur:.22, vol:.07, delay:d, filter:"bandpass", fc:800, q:3}));
+      noise({filter:"highpass", fc:5200, dur:.8, vol:.05, delay:.5}); },
+    /* a biplane beating up the farm — a drone that swells as it passes over */
+    plane(dur){ if (!ok()) return;
+      const t = dur || 4;
+      const osc = ctx.createOscillator(), osc2 = ctx.createOscillator();
+      const g = ctx.createGain(), bq = ctx.createBiquadFilter();
+      const lfo = ctx.createOscillator(), lg = ctx.createGain();
+      const t0 = now();
+      osc.type = "sawtooth"; osc2.type = "square";
+      osc.frequency.setValueAtTime(74, t0);
+      osc.frequency.linearRampToValueAtTime(96, t0 + t * .5);
+      osc.frequency.linearRampToValueAtTime(64, t0 + t);
+      osc2.frequency.setValueAtTime(150, t0);
+      osc2.frequency.linearRampToValueAtTime(192, t0 + t * .5);
+      osc2.frequency.linearRampToValueAtTime(128, t0 + t);
+      bq.type = "lowpass"; bq.frequency.value = 520;
+      lfo.type = "sine"; lfo.frequency.value = 26; lg.gain.value = 16;
+      lfo.connect(lg); lg.connect(osc.frequency);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(.12, t0 + t * .42);
+      g.gain.exponentialRampToValueAtTime(.13, t0 + t * .55);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + t);
+      osc.connect(bq); osc2.connect(bq); bq.connect(g); g.connect(master);
+      osc.start(t0); osc.stop(t0 + t + .1);
+      osc2.start(t0); osc2.stop(t0 + t + .1);
+      lfo.start(t0); lfo.stop(t0 + t + .1); },
   };
 
   /* ---- looping rain / wind beds ---- */
@@ -1378,23 +1803,104 @@ const SFX = (function(){
     if (!boot() || musicTimer) return;
     musicTick(); musicTimer = setInterval(musicTick, 4 * 380);
   }
+  /* ---- the outdoor bed ---------------------------------------------------
+     A farm is never silent. Underneath everything runs a continuous breeze:
+     brown noise through a low-pass, breathing on a very slow LFO. It is the
+     thing you stop hearing after ten seconds and miss the moment it stops. */
+  function startBed(){
+    if (!boot() || bedNode) return;
+    const dur = 3.7;
+    const buf = ctx.createBuffer(2, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++){
+      const d = buf.getChannelData(ch);
+      let v = 0;
+      for (let i = 0; i < d.length; i++){ v = v * .986 + (Math.random() * 2 - 1) * .055; d[i] = v; }
+    }
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bq = ctx.createBiquadFilter();
+    bq.type = "lowpass"; bq.frequency.value = 560; bq.Q.value = .5;
+    const g = ctx.createGain(); g.gain.value = 0.0001;
+    g.gain.linearRampToValueAtTime(.09, now() + 4);
+    const lfo = ctx.createOscillator(), lg = ctx.createGain();
+    lfo.frequency.value = .055; lg.gain.value = .04;
+    lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    src.connect(bq); bq.connect(g); g.connect(ambGain);
+    src.start();
+    bedNode = {src, g, lfo};
+  }
+  function bedLevel(v){
+    if (!bedNode) return;
+    try { bedNode.g.gain.linearRampToValueAtTime(v, now() + 1.5); } catch(e){}
+  }
+
   /* the game can point the ambience at whatever livestock is actually on the
      board, so what you hear matches what you can see */
   let herdVoice = null;
+  /* the weather and the moment can stir the farm up or settle it down */
+  let mood = {rate:1, near:1};
+  function wild(){ return BARNYARD[Math.floor(Math.random() * BARNYARD.length)]; }
+  /* the board may hand back a bare voice name or a {v, pan, dist} placement */
+  function placed(got, spread){
+    if (got && typeof got === "object" && got.v) return got;
+    return {v: typeof got === "string" ? got : wild(),
+            pan: Math.random() * (spread || 1.5) - (spread || 1.5) / 2,
+            dist: .45 + Math.random() * .5};
+  }
+
+  /* ---- the farmyard director --------------------------------------------
+     Roughly every other beat something calls, from somewhere, at some
+     distance — and better than half the time something else answers it back
+     from the other side of the field. That call-and-response is the whole
+     trick: it is what stops a farm sounding like a list of sound effects. */
+  function ambTick(){
+    try {
+      if (muted || !ctx) return;
+      const r = Math.random();
+      if (r < .60 * mood.rate){
+        /* the board can hand back not just a voice but where it stands */
+        const spot = placed(herdVoice && herdVoice());
+        const v = spot.v, pan = spot.pan, far = spot.dist * mood.near;
+        speak(v, pan, far);
+        if (Math.random() < .55){
+          const opts = ANSWER[v] || BARNYARD;
+          const a = opts[Math.floor(Math.random() * opts.length)];
+          setTimeout(() => speak(a, -pan * .85, far * (.65 + Math.random() * .5)),
+                     280 + Math.random() * 420);
+        }
+      } else if (r < .74){
+        const n = 2 + Math.floor(Math.random() * 3);
+        for (let k = 0; k < n; k++)
+          setTimeout(() => speak(Math.random() < .25 ? "coo" : "bird",
+                                 Math.random() * 1.7 - .85, .45 + Math.random() * .4),
+                     k * 140 + Math.random() * 110);
+      } else if (r < .83){
+        speak(Math.random() < .5 ? "cricket" : "bee", Math.random() * 1.7 - .85, .65);
+      } else if (r < .90){
+        lib.wind();
+      } else if (r < .94){
+        speak("farTractor", Math.random() < .5 ? -.8 : .8, .5);
+      }
+      /* the rest of the time, a beat of quiet */
+    } catch(e){}
+  }
+  /* now and then the whole yard kicks off at once */
+  function commotion(n){
+    try {
+      if (muted || !ctx) return;
+      const count = n || (4 + Math.floor(Math.random() * 3));
+      for (let k = 0; k < count; k++){
+        const spot = placed(herdVoice && herdVoice(), 1.7);
+        setTimeout(() => speak(spot.v, spot.pan, Math.min(1, spot.dist + .25)),
+                   k * (110 + Math.random() * 170));
+      }
+    } catch(e){}
+  }
   function startAmbience(){
     if (ambTimer) return;
-    ambTimer = setInterval(() => {
-      if (muted || !ctx) return;
-      const owned = herdVoice && herdVoice();
-      if (owned && Math.random() < .72){ try { voices[owned](); } catch(e){} return; }
-      const r = Math.random();
-      if (r < .30) voices[BARNYARD[Math.floor(Math.random() * BARNYARD.length)]]();
-      else if (r < .52) voices.bird();
-      else if (r < .64) voices.cricket();
-      else if (r < .72) voices.bee();
-      else if (r < .80) lib.wind();
-      /* the rest of the time, a beat of quiet */
-    }, 2600);
+    startBed();
+    ambTick();
+    ambTimer = setInterval(ambTick, 1900);
+    comTimer = setInterval(() => { if (Math.random() < .45) commotion(); }, 19000);
   }
 
   return {
@@ -1403,12 +1909,20 @@ const SFX = (function(){
     boot(){ boot(); startMusic(); startAmbience(); },
     /* fn() should return a voice name for an animal currently on the board, or null */
     watchHerd(fn){ herdVoice = fn; },
-    /* a whole barnyard answering at once */
+    /* a whole barnyard answering at once, spread across the field */
     chorus(list, gap){
       (list && list.length ? list : BARNYARD).forEach((v, i) =>
-        setTimeout(() => { if (voices[v]) try { voices[v](); } catch(e){} }, i * (gap || 190)));
+        setTimeout(() => speak(v, (i % 2 ? 1 : -1) * (.3 + Math.random() * .5),
+                               .8 + Math.random() * .4), i * (gap || 190)));
     },
-    rain(heavy){ startRain(heavy); }, rainOff(){ stopRain(); },
+    /* one animal, placed: pan -1 (left) .. 1 (right), dist 0 (far) .. 1 (close) */
+    speak(name, pan, dist){ speak(name, pan, dist); },
+    /* the whole yard kicking off at once */
+    commotion(n){ commotion(n); },
+    /* stir the farm up (a storm, a stampede) or settle it (rain, night) */
+    stir(rate, near){ mood.rate = rate == null ? 1 : rate; mood.near = near == null ? 1 : near; },
+    rain(heavy){ startRain(heavy); bedLevel(heavy ? .02 : .045); },
+    rainOff(){ stopRain(); bedLevel(.09); },
     get muted(){ return muted; },
     toggleMute(){
       muted = !muted; store.set("bs_mute", muted ? "1" : "0");
@@ -1418,7 +1932,7 @@ const SFX = (function(){
     get music(){ return musicOn; },
     toggleMusic(){
       musicOn = !musicOn; store.set("bs_music", musicOn ? "1" : "0");
-      if (musicGain) musicGain.gain.value = musicOn ? .17 : 0;
+      if (musicGain) musicGain.gain.value = musicOn ? .12 : 0;
       if (musicOn) startMusic();
       return musicOn;
     },
@@ -1444,7 +1958,7 @@ const DOM = {
   rail:$("#rail"), log:$("#log"), insp:$("#insp"),
   hint:$("#hint"), actions:$("#actions"), toasts:$("#toasts"), conf:$("#confetti"),
   dieScene:$("#dieScene"), dieCube:$("#dieCube"), dieHint:$("#dieHint"),
-  sky:$("#sky"), rainLayer:$("#rainLayer"), heat:$("#heat"), flash:$("#flash"),
+  sky:$("#sky"), rainLayer:$("#rainLayer"), heat:$("#heat"), flash:$("#flash"), bolt:$("#bolt"),
   wxIcon:$("#wxIcon"), wxName:$("#wxName"), wxNote:$("#wxNote"), wxNext:$("#wxNext"), dayTag:$("#dayTag"),
   goal:$("#goal"), setup:$("#setup"), roster:$("#roster"), modes:$("#modes"), setupNote:$("#setupNote"),
   lapPick:$("#lapPick"), lapSegs:$("#lapSegs"), lapNote:$("#lapNote"),
@@ -1581,7 +2095,8 @@ function buildBoard(){
     n.style.setProperty("--topbg", K.top);
     n.innerHTML =
       '<div class="slab">' +
-        '<div class="f top"><div class="soil" style="--furrow:' + (t.row % 2 ? 90 : 0) + 'deg"></div>' +
+        '<div class="f top"><div class="soil" style="--furrow:' + (t.row % 2 ? 90 : 0) + 'deg">' +
+          (t.kind === "mill" ? '<span class="millsh"></span>' : '') + '</div>' +
           '<span class="num">' + (t.i + 1) + '</span>' +
           '<span class="rich"></span>' +
           '<span class="tname"></span>' +
@@ -1606,7 +2121,8 @@ function renderTile(i, popped){
   const t = S.board[i], K = KINDS[t.kind];
   if (!t.node) return;
   t.richNode.textContent = t.kind === "plot" ? (t.soil === "rich" ? "✨" : t.soil === "rocky" ? "🪨" : "") : "";
-  let owner = null, glyph = "", cls = "bb", tag = "", bar = "";
+  let owner = null, glyph = "", cls = "bb", tag = "", bar = "", raw = "", keep = false;
+  t.bbNode.style.setProperty("--litx", "0px");
 
   if (t.animal){
     owner = S.players[t.animal.owner];
@@ -1623,23 +2139,92 @@ function renderTile(i, popped){
     tag = '<span class="tag" style="color:' + owner.color + '">' +
           (ripe ? "ripe!" : t.crop.grown + "/" + t.crop.need + "d") + '</span>';
     bar = '<span class="growbar"><i style="width:' + Math.round(pr * 100) + '%"></i></span>';
+  } else if (t.kind === "mill"){
+    cls += " millbb";
+    /* rebuilding the mill would snap its sails back to noon — leave one standing */
+    if (t.bbNode.querySelector(".mill")) keep = true; else raw = millHTML();
   } else if (t.kind !== "plot"){
     glyph = K.emoji;
     cls += (t.kind === "barn" || t.kind === "gate") ? " idle barnBig" : " idle";
     if (popped) cls += " pop";
+  } else {
+    /* bare soil is never quite bare — daisies, a mushroom, a stone, a ladybird */
+    const lit = litterOf(t);
+    if (lit){
+      cls += " litter sway";
+      glyph = lit.g;
+      t.bbNode.style.setProperty("--litx", lit.x);
+    }
   }
 
   t.bbNode.className = cls;
-  t.bbNode.innerHTML = glyph
+  if (!keep) t.bbNode.innerHTML = raw || (glyph
     ? '<span class="glyph' + (t.crop && cropProgress(t) < 1 ? " sm" : "") +
       '" style="animation-delay:' + ((i * 137 % 23) / 10).toFixed(1) + 's">' + glyph + '</span>' + tag + bar
-    : "";
+    : "");
   t.ringNode.style.setProperty("--oc", owner ? owner.color : "transparent");
   t.nameNode.textContent = t.kind === "plot"
     ? (t.crop ? CROPS[t.crop.key].name : t.animal ? ANIMALS[t.animal.key].name : "")
     : K.name;
 }
 function renderAllTiles(){ for (let i = 0; i < NTILES; i++) renderTile(i); }
+
+/* ---- THE OLD MILL -------------------------------------------------------
+   Built out of divs, not an emoji, so the sails actually turn: four latticed
+   sails on a hub, a stone tower, a lit window, and flour drifting out of the
+   door. The same markup shrinks down into the legend and the inspector. */
+function millHTML(){
+  return '<div class="mill">' +
+    '<div class="plinth"></div>' +
+    '<div class="tower"></div>' +
+    '<div class="door"></div>' +
+    '<div class="win"></div>' +
+    '<div class="cap"></div>' +
+    '<div class="vane">🐓</div>' +
+    '<div class="sails"><i></i><i></i><i></i><i></i></div>' +
+    '<div class="hub"></div>' +
+    '<div class="flour">' +
+      [0, 1, 2].map(k => '<i style="--fx:' + (7 + k * 8) + 'px;animation-delay:' +
+        (k * 1.7).toFixed(1) + 's"></i>').join("") +
+    '</div>' +
+  '</div>';
+}
+function millNode(){
+  const t = S.board[MILL_I];
+  return t && t.bbNode ? t.bbNode.querySelector(".mill") : null;
+}
+/* the tiles the mill stands in front of, from the default camera */
+const MILL_HIDES = [30, 31, 32, 38];
+function millGhost(){
+  const m = millNode();
+  if (!m) return;
+  const wanted = MILL_HIDES.indexOf(S.inspected) >= 0 ||
+                 S.players.some(p => p.alive && MILL_HIDES.indexOf(p.pos) >= 0);
+  m.classList.toggle("ghost", wanted);
+}
+/* the sails race while the millstones are turning */
+function millGrind(ms){
+  const m = millNode();
+  if (!m) return;
+  m.classList.add("grind");
+  setTimeout(() => m.classList.remove("grind"), ms || 2600);
+}
+/* how fast the sails turn is the weather, plainly visible from across the board */
+const MILL_SPEED = {sun:"9s", rain:"5.5s", storm:"1.6s", drought:"34s", rainbow:"7s"};
+function millWind(){
+  root.style.setProperty("--millspin", MILL_SPEED[S.wx] || "9s");
+}
+
+/* ---- odds and ends scattered over empty soil --------------------------- */
+const LITTER = ["🌼","🍄","🪨","🐞","🍀","🌷","🐌","🌼","🍄","🪨","🌼","🍀"];
+function litterOf(t){
+  if (t.kind !== "plot" || t.crop || t.animal) return null;
+  const h = (Math.imul(t.i + 7, 2654435761) ^ 0x5bf03635) >>> 0;
+  if ((h & 7) < 2) return null;                 /* some plots stay honestly bare */
+  const k = ((h >>> 9) % 15) - 7;
+  return {g:LITTER[(h >>> 4) % LITTER.length],
+          x:"calc(var(--cell) * " + (k * 0.026).toFixed(3) + ")"};
+}
 
 /* ============ props: the shared pasture in front of the board ============ */
 /* ---- the farmyard: home base, just outside the starting tile ------------
@@ -1765,29 +2350,75 @@ function layoutProps(){
 /* ============================================================================
    THE LIVING FIELD — wind, wildlife, reactions
    ========================================================================== */
-const FLYERS = [
-  {g:"\ud83e\udd8b", n:3, z:[40, 80],  t:[19, 27]},
-  {g:"\ud83d\udc1d", n:2, z:[26, 54],  t:[14, 19]},
-  {g:"\ud83d\udc26", n:2, z:[95, 150], t:[24, 33]},
+/* Each flyer is a little machine of divs — body, head, hinged wings — plus a
+   shadow that runs the same ground track underneath it. The shadow swells and
+   darkens as the creature drops, which is what makes the height read. */
+const WING_SETS = [
+  {wing:"linear-gradient(135deg,#ff9e4d,#f4622f)", spot:"rgba(255,244,214,.85)", body:"linear-gradient(180deg,#6a5238,#241b10)"},
+  {wing:"linear-gradient(135deg,#8fd6ff,#3f7fe0)", spot:"rgba(255,255,255,.8)",  body:"linear-gradient(180deg,#4a4560,#1a1725)"},
+  {wing:"linear-gradient(135deg,#ffe07a,#f2b134)", spot:"rgba(96,56,10,.5)",     body:"linear-gradient(180deg,#5e4a2c,#241b10)"},
+  {wing:"linear-gradient(135deg,#f7a8d8,#c45fae)", spot:"rgba(255,255,255,.85)", body:"linear-gradient(180deg,#5a3a52,#211320)"},
+  {wing:"linear-gradient(135deg,#b6f08a,#5fae4a)", spot:"rgba(255,255,255,.7)",  body:"linear-gradient(180deg,#3f5230,#161f11)"},
 ];
+const FLYERS = [
+  {sp:"bfly", n:3, z:[34, 82],  t:[19, 27], size:0.44, beat:0.30},
+  {sp:"bee",  n:3, z:[22, 50],  t:[13, 18], size:0.20, beat:0.07},
+  {sp:"dfly", n:2, z:[30, 66],  t:[16, 23], size:0.30, beat:0.09},
+  {sp:"bird", n:2, z:[96, 155], t:[24, 33], size:0.42, beat:0.40},
+];
+function bugHTML(sp, set){
+  const wings = sp === "dfly"
+    ? '<div class="w l"></div><div class="w r"></div>' +
+      '<div class="w l w2"></div><div class="w r w2"></div>'
+    : '<div class="w l"></div><div class="w r"></div>';
+  const vars = sp === "bfly"
+    ? 'style="--wing:' + set.wing + ';--spot:' + set.spot + ';--body:' + set.body + '"'
+    : '';
+  return '<div class="bug ' + sp + '" ' + vars + '>' + wings +
+         '<div class="bod"></div><div class="hd"></div></div>';
+}
 function layoutFlyers(){
   if (!DOM.flyers) return;
   DOM.flyers.innerHTML = "";
   const c = CELL, size = c * 7, rnd = mulberry(4242);
   const spot = () => ((rnd() * 1.3 - 0.15) * size).toFixed(0) + "px";
+  /* how big and dark the shadow is directly under a creature at height z */
+  const shadowAt = z => {
+    const k = clamp(1 - z / 190, 0.12, 1);
+    return {s:(0.22 + k * 0.5).toFixed(2), o:(0.1 + k * 0.42).toFixed(2)};
+  };
   FLYERS.forEach(kind => {
     for (let k = 0; k < kind.n; k++){
       const f = el("div", "flyer");
-      for (let i = 0; i < 4; i++){
-        f.style.setProperty("--x" + i, spot());
-        f.style.setProperty("--y" + i, spot());
-      }
-      f.style.setProperty("--z0", (kind.z[0] * c / 84).toFixed(0) + "px");
-      f.style.setProperty("--z1", (kind.z[1] * c / 84).toFixed(0) + "px");
-      f.style.setProperty("--ft", (kind.t[0] + rnd() * (kind.t[1] - kind.t[0])).toFixed(1) + "s");
-      f.style.animationDelay = (-rnd() * 20).toFixed(1) + "s";
+      const sh = el("div", "bugsh");
+      const pts = [];
+      for (let i = 0; i < 4; i++) pts.push([spot(), spot()]);
+      const z0 = kind.z[0] * c / 84, z1 = kind.z[1] * c / 84;
+      const lo = shadowAt(z0), hi = shadowAt(z1);
+      const dur = (kind.t[0] + rnd() * (kind.t[1] - kind.t[0])).toFixed(1) + "s";
+      const delay = (-rnd() * 20).toFixed(1) + "s";
+      [f, sh].forEach(n => {
+        pts.forEach((p, i) => {
+          n.style.setProperty("--x" + i, p[0]);
+          n.style.setProperty("--y" + i, p[1]);
+        });
+        n.style.setProperty("--ft", dur);
+        n.style.animationDelay = delay;
+      });
+      f.style.setProperty("--z0", z0.toFixed(0) + "px");
+      f.style.setProperty("--z1", z1.toFixed(0) + "px");
+      f.style.setProperty("--bw", (c * kind.size * (0.85 + rnd() * 0.35)).toFixed(1) + "px");
+      f.style.setProperty("--beat", (kind.beat * (0.82 + rnd() * 0.4)).toFixed(3) + "s");
+      sh.style.setProperty("--s0", lo.s); sh.style.setProperty("--o0", lo.o);
+      sh.style.setProperty("--s1", hi.s); sh.style.setProperty("--o1", hi.o);
+      const set = WING_SETS[Math.floor(rnd() * WING_SETS.length)];
       f.innerHTML = '<div class="up" style="transform:translateZ(0)">' +
-        '<div class="bb"><span class="glyph sm">' + kind.g + '</span></div></div>';
+        '<div class="bb">' + bugHTML(kind.sp, set) + '</div></div>';
+      /* the bug's own bank runs on its flight clock, so turns line up */
+      const bug = f.querySelector(".bug");
+      bug.style.setProperty("--ft", dur);
+      bug.style.animationDelay = delay;
+      DOM.flyers.appendChild(sh);
       DOM.flyers.appendChild(f);
     }
   });
@@ -1839,25 +2470,47 @@ function leafBlow(n){
   }
 }
 
-/* make one animal hop and speak, so what you hear is something you can see */
+/* Where a sound sits in the stereo field, and how far off it is, taken
+   straight from where the thing making it is standing on the board. */
+function placeOf(x, y){
+  const span = (CELL || 84) * 7;
+  return {
+    pan: clamp(((x / span) - .5) * 1.8, -1, 1),
+    dist: clamp(.42 + (y / span) * .55, .3, 1),
+  };
+}
+function placeOfTile(i){ const pt = tileCenter(i); return placeOf(pt.x, pt.y); }
+function placeOfNode(bb){
+  const w = bb.parentElement;
+  return placeOf(parseFloat(w && w.style.left) || 0, parseFloat(w && w.style.top) || 0);
+}
+/* make one animal hop and speak, so what you hear is something you can see —
+   and it is heard from the side of the field it is actually standing on */
 function animalSpeaks(){
   const live = S.board.filter(t => t.animal && t.bbNode);
   const penned = DOM.props ? Array.from(DOM.props.querySelectorAll(".bb")) : [];
   if (live.length && (!penned.length || Math.random() < .7)){
     const t = pick(live, Math.random);
     hopStandee(t.bbNode);
-    return ANIMALS[t.animal.key].sfx;
+    return Object.assign({v:ANIMALS[t.animal.key].sfx}, placeOfTile(t.i));
   }
   if (penned.length){
     const bb = pick(penned, Math.random);
     hopStandee(bb);
-    if (bb.dataset.sfx) return bb.dataset.sfx;
+    if (bb.dataset.sfx) return Object.assign({v:bb.dataset.sfx}, placeOfNode(bb));
   }
   const wild = DOM.decor ? Array.from(DOM.decor.querySelectorAll(".bb")).filter(b => b.dataset.sfx) : [];
   if (wild.length && Math.random() < .6){
     const bb = pick(wild, Math.random);
     hopStandee(bb);
-    return bb.dataset.sfx;
+    return Object.assign({v:bb.dataset.sfx}, placeOfNode(bb));
+  }
+  /* nothing on the board yet — let it come from somewhere out in the fields */
+  const yard = DOM.yardProps ? Array.from(DOM.yardProps.querySelectorAll(".bb[data-sfx]")) : [];
+  if (yard.length && Math.random() < .55){
+    const bb = pick(yard, Math.random);
+    hopStandee(bb);
+    return Object.assign({v:bb.dataset.sfx}, placeOfNode(bb));
   }
   return null;
 }
@@ -1934,6 +2587,48 @@ function flyPast(){
   if (Math.random() < .5) SFX.voice("bird");
 }
 
+/* ---- BARNSTORMING -------------------------------------------------------
+   The game's namesake. A biplane beats up the farm, trailing a ribbon of
+   smoke, with its shadow running across the tilted field below; now and then
+   it rolls into a loop over the mill and the whole yard stops to look up. */
+function barnstorm(loop){
+  if (S.over && loop === undefined) return;
+  const dur = 11 + Math.random() * 4;
+  const doLoop = loop === undefined ? Math.random() < .45 : !!loop;
+  const pl = el("div", "plane" + (doLoop ? " loop" : ""));
+  pl.style.setProperty("--pt", dur.toFixed(1) + "s");
+  pl.style.setProperty("--pty", (10 + Math.random() * 17).toFixed(1) + "vh");
+  pl.innerHTML = '<span class="rig"><span class="glyph">🛩️</span></span>';
+  document.body.appendChild(pl);
+
+  /* its shadow crosses the soil in step with it */
+  const sh = el("div", "planesh");
+  sh.style.setProperty("--pt", dur.toFixed(1) + "s");
+  DOM.bfx.appendChild(sh);
+
+  SFX.play("plane", dur);
+  const glyph = pl.querySelector(".glyph");
+  const smoke = setInterval(() => {
+    const r = glyph.getBoundingClientRect();
+    if (!r.width) return;
+    const s = el("div", "psmoke");
+    s.style.left = (r.left + r.width * .12) + "px";
+    s.style.top  = (r.top + r.height * .55) + "px";
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 3000);
+  }, 90);
+
+  /* halfway across, the farm looks up */
+  setTimeout(() => {
+    if (doLoop) SFX.voice("crow");
+    const look = allStandees();
+    for (let k = 0; k < Math.min(7, look.length); k++)
+      setTimeout(() => hopStandee(pick(look, Math.random).bb), k * 90);
+  }, dur * (doLoop ? 460 : 520));
+
+  setTimeout(() => { clearInterval(smoke); pl.remove(); sh.remove(); }, dur * 1000 + 300);
+}
+
 /* every living-field timer, started and stopped as one */
 const LIFE = [];
 function startLife(){
@@ -1941,6 +2636,9 @@ function startLife(){
   LIFE.push(setInterval(windGust, 21000));
   LIFE.push(setInterval(pawnIdle, 4100));
   LIFE.push(setInterval(flyPast, 17000));
+  LIFE.push(setInterval(() => { if (Math.random() < .6) barnstorm(); }, 33000));
+  LIFE.push(setInterval(rainOnField, 850));
+  LIFE.push(setInterval(() => { if (Math.random() < .55) dustDevil(); }, 8500));
   LIFE.push(setInterval(() => {
     /* a ripe crop catching the light */
     if (!S.players.length || S.over) return;
@@ -1993,6 +2691,7 @@ function layoutPawns(){
   });
   moveSpotlight();
   markLeader();
+  millGhost();
 }
 /* a ring of light marks whose turn it is — it slides between tiles, the board does not */
 function moveSpotlight(){
@@ -2092,6 +2791,13 @@ function renderWx(){
   DOM.wxNext.textContent = WEATHER[S.wxNext].emoji;
   DOM.dayTag.textContent = S.finalDay ? "Final Day" : "Day " + S.day;
   DOM.sky.className = S.wx;
+  millWind();
+  /* a storm winds the whole yard up; rain and drought settle it down */
+  SFX.stir(S.wx === "storm" ? 1.3 : S.wx === "rainbow" ? 1.15
+         : S.wx === "rain" ? .8 : S.wx === "drought" ? .7 : 1,
+           S.wx === "storm" ? 1.15 : S.wx === "rain" ? .8 : 1);
+  const bed = document.getElementById("bed");
+  if (bed) bed.classList.toggle("parched", S.wx === "drought");
   const wet = S.wx === "rain" || S.wx === "storm";
   DOM.rainLayer.classList.toggle("on", wet);
   DOM.heat.classList.toggle("on", S.wx === "drought");
@@ -2138,6 +2844,7 @@ function inspect(i){
   S.inspected = i;
   const t = S.board[i], K = KINDS[t.kind];
   let glyph = K.emoji || "🟫", title = K.name, sub = "tile " + (i + 1), body = K.desc, chips = "";
+  if (t.kind === "mill") glyph = '<span class="millicon">' + millHTML() + '</span>';
   if (t.animal){
     const A = ANIMALS[t.animal.key], o = S.players[t.animal.owner];
     glyph = A.emoji; title = A.name; sub = o.name + "'s livestock";
@@ -2164,6 +2871,7 @@ function inspect(i){
   DOM.insp.innerHTML =
     '<div class="ih"><span class="g">' + glyph + '</span><span><b>' + title + '</b><small>' + sub + '</small></span></div>' +
     '<div class="id">' + body + '</div>' + chips;
+  millGhost();
 }
 
 /* ---- FX ------------------------------------------------------------------ */
@@ -2256,7 +2964,122 @@ function lightning(){
   DOM.flash.classList.remove("go");
   void DOM.flash.offsetWidth;
   DOM.flash.classList.add("go");
+  /* a real fork of lightning, struck somewhere over the far hills */
+  const b = DOM.bolt;
+  if (b){
+    b.style.left = (8 + Math.random() * 74) + "vw";
+    b.style.height = (30 + Math.random() * 22) + "vh";
+    b.style.transform = "scaleX(" + (Math.random() < .5 ? -1 : 1) * (0.7 + Math.random() * .7) + ")";
+    b.classList.remove("go");
+    void b.offsetWidth;
+    b.classList.add("go");
+    setTimeout(() => b.classList.remove("go"), 700);
+  }
   SFX.play("thunder");
+}
+
+/* ---- rings of rain landing on the soil ---------------------------------- */
+function splashAt(i){
+  const pt = tileCenter(i);
+  const w = el("div", "splash");
+  w.style.left = pt.x + "px"; w.style.top = pt.y + "px";
+  for (let k = 0; k < 3; k++){
+    const r = el("i");
+    r.style.marginLeft = ((Math.random() - .5) * CELL * .55 - 5).toFixed(0) + "px";
+    r.style.marginTop = ((Math.random() - .5) * CELL * .4 - 4).toFixed(0) + "px";
+    r.style.animationDelay = (Math.random() * .45).toFixed(2) + "s";
+    w.appendChild(r);
+  }
+  DOM.bfx.appendChild(w);
+  setTimeout(() => w.remove(), 1400);
+}
+function rainOnField(){
+  if (S.over || !S.players.length) return;
+  if (S.wx !== "rain" && S.wx !== "storm") return;
+  const n = S.wx === "storm" ? 5 : 3;
+  for (let k = 0; k < n; k++)
+    setTimeout(() => splashAt(Math.floor(Math.random() * NTILES)), Math.random() * 700);
+}
+
+/* ---- a dust devil skittering over parched ground ------------------------ */
+function dustDevil(){
+  if (S.over || !S.players.length || S.wx !== "drought") return;
+  const c = CELL, size = c * 7;
+  const w = el("div", "devil");
+  const y0 = Math.random() * size, y1 = clamp(y0 + (Math.random() - .5) * size * .7, 0, size);
+  w.style.setProperty("--dx0", (Math.random() < .5 ? -c : size + c).toFixed(0) + "px");
+  w.style.setProperty("--dx1", (Math.random() < .5 ? size + c : -c).toFixed(0) + "px");
+  w.style.setProperty("--dy0", y0.toFixed(0) + "px");
+  w.style.setProperty("--dy1", y1.toFixed(0) + "px");
+  const dur = (6 + Math.random() * 4);
+  w.style.setProperty("--dvt", dur + "s");
+  /* narrowest puff on top, widest on the ground, so it reads as a spinning cone */
+  const cols = [];
+  for (let k = 4; k >= 0; k--){
+    const s = c * (.11 + k * .06);
+    cols.push('<i style="width:' + s.toFixed(1) + 'px;height:' + (s * .62).toFixed(1) +
+              'px;margin-bottom:' + (c * .03).toFixed(1) + 'px;animation-delay:' +
+              (k * .13).toFixed(2) + 's;opacity:' + (0.5 + k * .11).toFixed(2) + '"></i>');
+  }
+  w.innerHTML = '<div class="col">' + cols.join("") + '</div>';
+  DOM.bfx.appendChild(w);
+  SFX.play("wind");
+  setTimeout(() => w.remove(), dur * 1000 + 200);
+}
+
+/* ---- a gopher taking a bow ---------------------------------------------- */
+function molePop(i){
+  const pt = tileCenter(i);
+  const w = el("div", "up molepop");
+  w.style.left = pt.x + "px"; w.style.top = pt.y + "px";
+  w.style.zIndex = 300;
+  w.innerHTML = '<div class="bb"><span class="glyph">🐹</span></div>';
+  DOM.bfx.appendChild(w);
+  dustAt(i);
+  setTimeout(() => w.remove(), 1700);
+}
+
+/* ---- the twister, standing on the tile it is about to empty ------------- */
+function funnelAt(i){
+  const pt = tileCenter(i);
+  const w = el("div", "up funnel");
+  w.style.left = pt.x + "px"; w.style.top = pt.y + "px";
+  w.style.zIndex = 320;
+  w.innerHTML = '<div class="bb"><span class="glyph">🌪️</span></div>';
+  DOM.bfx.appendChild(w);
+  sparkle(i, ["🍂","🌾","💨"], 10);
+  setTimeout(() => w.remove(), 1500);
+}
+
+/* ---- crows dropping in on a field somebody just robbed ------------------ */
+function crowsIn(i, n){
+  const c = centerOf(i);
+  for (let k = 0; k < (n || 4); k++){
+    const b = el("div", "crowfly", "🐦‍⬛");
+    const a0 = Math.random() * Math.PI * 2, a1 = a0 + Math.PI * (.6 + Math.random() * .8);
+    b.style.left = c.x + "px"; b.style.top = (c.y - 20) + "px";
+    b.style.setProperty("--ax", (Math.cos(a0) * 260).toFixed(0) + "px");
+    b.style.setProperty("--ay", (Math.sin(a0) * 170 - 90).toFixed(0) + "px");
+    b.style.setProperty("--bx", (Math.cos(a1) * 300).toFixed(0) + "px");
+    b.style.setProperty("--by", (Math.sin(a1) * 190 - 140).toFixed(0) + "px");
+    b.style.animationDelay = (k * .11).toFixed(2) + "s";
+    document.body.appendChild(b);
+    setTimeout(() => b.remove(), 2200 + k * 120);
+  }
+  SFX.voice("bird");
+  setTimeout(() => SFX.voice("crow"), 260);
+}
+
+/* ---- a tractor hitched on behind, blowing smoke ------------------------- */
+function tractorTow(p, ms){
+  if (!p || !p.lift) return;
+  const tow = el("div", "bb tow", '<span class="glyph">🚜</span>');
+  p.lift.appendChild(tow);
+  const puff = setInterval(() => {
+    const pt = tileCenter(p.pos);
+    trailPuff(pt.x - CELL * .4, pt.y + CELL * .12);
+  }, 180);
+  setTimeout(() => { clearInterval(puff); tow.remove(); }, ms || 2200);
 }
 function confettiStorm(n){
   const chars = ["🌽","🌻","🎃","🍓","🍉","🌾","🪙","⭐","🥕","🍎"];
@@ -2361,6 +3184,7 @@ async function walk(p, path, opt){
     /* stepping off the barn onto the farmyard rides the return lane */
     if (!opt?.back && p.pos === LAST && to === 0) await rideHome(p);
     else await hopTo(p, to, opt?.dur);
+    if (to === MILL_I) millGrind(1100);
     p.abs += opt && opt.back ? -1 : 1;
     p.stats.steps++;
     renderRail();
@@ -2537,7 +3361,7 @@ function myCrops(p){ return S.board.filter(t => t.crop && t.crop.owner === p.idx
 /* ---- barnyard chatter -----------------------------------------------------
    Animals are the voice of the farm, so they answer to nearly everything:
    dawn, harvests, purchases, tile landings and idle moments. */
-const WILD = ["bird","quack","dog","turkey","goat","neigh","crow","cluck"];
+const WILD = ["bird","quack","dog","turkey","goat","neigh","crow","cluck","coo","honk","bray"];
 function boardAnimals(){
   return S.board.filter(t => t.animal).map(t => ANIMALS[t.animal.key].sfx);
 }
@@ -2556,11 +3380,13 @@ function chatter(nearIdx, fallback){
       const d = Math.min(Math.abs(t.i - nearIdx), NTILES - Math.abs(t.i - nearIdx));
       if (d < bd){ bd = d; best = t; }
     }
-    SFX.voice(ANIMALS[best.animal.key].sfx);
+    const at = placeOfTile(best.i);
+    SFX.speak(ANIMALS[best.animal.key].sfx, at.pan, at.dist);
     hopStandee(best.bbNode, ANIMALS[best.animal.key].emoji);
     return;
   }
-  SFX.voice(fallback || pick(WILD, Math.random));
+  const at = placeOfTile(nearIdx);
+  SFX.speak(fallback || pick(WILD, Math.random), at.pan, at.dist);
 }
 
 /* ============================================================================
@@ -2659,6 +3485,7 @@ async function resolvePlot(p, t){
     if (doIt){
       p.coins += mine; owner.coins += theirs; p.stats.scrumped += mine;
       SFX.play("scrump"); SFX.voice("quack");
+      crowsIn(t.i, 4);
       coinBurst(t.i, 7); floatText(t.i, "+" + mine + " 🤫", p.color);
       log(who(p) + " scrumped " + owner.name + "'s " + C.emoji + " — <b>" + mine + "</b> for them, " +
           theirs + " for " + owner.name, "lb");
@@ -2716,6 +3543,35 @@ async function doMarket(p, fromCard){
   }
   toast("🛒", (fromCard ? "Farmers' Market" : "Market day") + ": " + ripe.length + " crops for " + total + " coins");
   await sleep(500);
+}
+
+/* ---- THE OLD MILL -------------------------------------------------------
+   The hardest tile on the board to hit on purpose — dead centre of the
+   serpentine — and the best price on the farm when you do. */
+async function doMill(p){
+  const ripe = myCrops(p).filter(isRipe);
+  SFX.play("mill");
+  millGrind(ripe.length ? 1200 + ripe.length * 600 : 2200);
+  windGust();
+  if (!ripe.length){
+    setTimeout(() => SFX.voice("crow"), 700);
+    pay(p, 40, p.pos, who(p) + " had nothing to grind, so swept the millstones for the miller (+40)");
+    sparkle(p.pos, ["🌫️","⚙️"], 8);
+    await sleep(900);
+    return;
+  }
+  let total = 0;
+  for (const t of ripe){
+    total += harvest(t, p, 1.6 * WEATHER[S.wx].mult, " <i>(milled +60%)</i>");
+    sparkle(MILL_I, ["🌫️","🍞"], 5);
+    await sleep(330);
+  }
+  SFX.play("cash");
+  toast("⚙️", "The Old Mill ground " + ripe.length + " crop" + (ripe.length > 1 ? "s" : "") +
+        " into " + total + " coins");
+  log(who(p) + " milled <b>" + ripe.length + "</b> crop" + (ripe.length > 1 ? "s" : "") +
+      " into flour at <b>+60%</b> — " + total + " coins", "lg");
+  await sleep(600);
 }
 
 async function doCoop(p){
@@ -2875,6 +3731,7 @@ async function resolveLanding(p, depth){
     case "market": await doMarket(p, false); break;
     case "coop": await doCoop(p); break;
     case "fair": await doFair(p); break;
+    case "mill": await doMill(p); break;
 
     case "tractor":
       if (depth >= 2){ log(who(p) + " parks the tractor for now."); await sleep(400); break; }
@@ -2882,6 +3739,7 @@ async function resolveLanding(p, depth){
       bubble(p, "\ud83d\ude0e");
       setTimeout(() => SFX.voice("dog"), 520);
       toast("🚜", p.name + " hitches a ride — 3 tiles on!");
+      tractorTow(p, 1500);
       await sleep(420);
       await shove(p, 3);
       await resolveLanding(p, depth + 1);
@@ -2890,6 +3748,7 @@ async function resolveLanding(p, depth){
     case "gopher":
       if (depth >= 2){ await sleep(300); break; }
       SFX.play("gopher");
+      molePop(p.pos);
       bubble(p, "\ud83d\ude31");
       setTimeout(() => SFX.voice("dog"), 380);
       pay(p, -20, p.pos, who(p) + " met a gopher: −20 coins and 3 tiles back", "lr");
@@ -2914,6 +3773,7 @@ async function resolveLanding(p, depth){
     case "twister": {
       if (depth >= 2){ await sleep(300); break; }
       SFX.play("twister");
+      funnelAt(p.pos);
       bubble(p, "\ud83d\ude35\u200d\ud83d\udcab");
       SFX.chorus(["cluck","quack","turkey","goat"], 120);
       windGust();
@@ -2961,7 +3821,7 @@ async function crossBarn(p){
   bubble(p, "\ud83c\udf89");
   hopStandee(S.board[LAST].bbNode, "\ud83c\udfda\ufe0f");
   SFX.play("bell");
-  setTimeout(() => SFX.voice("moo"), 260);
+  setTimeout(() => SFX.commotion(6), 240);
   pay(p, 120, p.pos, who(p) + " hauled the harvest through <b>The Big Barn</b> — run " +
       p.lap + (need ? "/" + need : "") + " (+120)");
   sparkle(p.pos, ["🏚️","🌾","🪙"], 14);
@@ -2972,6 +3832,7 @@ async function crossBarn(p){
     S.finalDay = true;
     SFX.play("fanfare");
     confettiStorm(32);
+    barnstorm(true);
     renderWx();
     toast("🔔", p.name + " finished run " + need + " — FINAL DAY!", true);
     log('<b>🔔 FINAL DAY.</b> ' + p.name + ' is done. Everyone else gets one last turn, then every ' +
@@ -3003,6 +3864,25 @@ async function doRoll(){
     await rollDieAnim(v);
     if (S.gen !== p.gen0){ S.busy = false; return; }
     DOM.dieHint.textContent = "rolled " + v;
+    if (v === 6){
+      DOM.dieScene.classList.remove("six");
+      void DOM.dieScene.offsetWidth;
+      DOM.dieScene.classList.add("six");
+      setTimeout(() => DOM.dieScene.classList.remove("six"), 1200);
+      const r = DOM.dieScene.getBoundingClientRect();
+      for (let k = 0; k < 8; k++){
+        const s = el("div", "spark", "✨");
+        const a = Math.random() * Math.PI * 2, d = 26 + Math.random() * 46;
+        s.style.left = (r.left + r.width / 2) + "px";
+        s.style.top  = (r.top + r.height / 2) + "px";
+        s.style.setProperty("--sx", (Math.cos(a) * d).toFixed(0) + "px");
+        s.style.setProperty("--sy", (Math.sin(a) * d - 14).toFixed(0) + "px");
+        s.style.setProperty("--sr", (Math.random() * 640 - 320) + "deg");
+        s.style.animationDelay = (Math.random() * .2).toFixed(2) + "s";
+        document.body.appendChild(s);
+        setTimeout(() => s.remove(), 1400);
+      }
+    }
     log(who(p) + " rolled a <b>" + v + "</b>");
     const path = walkPath(p.pos, v);
     setHint(who(p) + " rolls <b>" + v + "</b> and hops " + path.length + " tile" + (path.length > 1 ? "s" : "") + "…");
@@ -3108,9 +3988,17 @@ async function newDay(){
   const W = WEATHER[S.wx];
   renderWx();
   rippleBoard();
-  SFX.voice("crow");
   setTimeout(() => SFX.play("dayBreak"), 620);
   setTimeout(() => SFX.chorus(boardAnimals().slice(0, 4), 230), 1050);
+  /* dawn: a rooster, an answer from the far side, then the birds wake up */
+  SFX.speak("crow", -.55, 1);
+  setTimeout(() => SFX.speak("crow", .6, .55), 430);
+  setTimeout(() => {
+    for (let k = 0; k < 7; k++)
+      setTimeout(() => SFX.speak(k % 3 === 0 ? "coo" : "bird",
+                                 Math.random() * 1.7 - .85, .45 + Math.random() * .45), k * 150);
+  }, 760);
+  setTimeout(() => SFX.commotion(5), 1500);
   toast("🌅", "Day " + S.day + " — " + W.emoji + " " + W.name, true);
   log('<b>🌅 Day ' + S.day + '</b> · ' + W.emoji + " " + W.name + " — " + W.note, "lb");
   await sleep(950);
@@ -3251,6 +4139,8 @@ async function endSeason(forceWinner){
   SFX.play("fanfare");
   setTimeout(() => SFX.chorus(null, 170), 1400);
   confettiStorm(130);
+  barnstorm(true);
+  setTimeout(() => barnstorm(true), 3200);
   DOM.winCrown.textContent = winner.emoji;
   DOM.winName.innerHTML = winner.name + " wins the season! 🏆";
   DOM.winSub.innerHTML = MODES[S.mode].target
@@ -3411,7 +4301,8 @@ function buildLegend(){
   Object.keys(KINDS).forEach(k => {
     if (k === "plot") return;
     const K = KINDS[k];
-    DOM.legend.appendChild(el("div", "", '<i>' + K.emoji + '</i><span><b>' + K.name + '</b><small>' + K.desc + '</small></span>'));
+    const icon = k === "mill" ? '<span class="millicon">' + millHTML() + '</span>' : K.emoji;
+    DOM.legend.appendChild(el("div", "", '<i>' + icon + '</i><span><b>' + K.name + '</b><small>' + K.desc + '</small></span>'));
   });
   ["rich","rocky"].forEach(s => {
     DOM.legend.appendChild(el("div", "", s === "rich"
@@ -3474,8 +4365,11 @@ function startGame(){
   toast("🌻", "Day 1 · " + MODES[S.mode].name, true);
   SFX.boot();
   SFX.watchHerd(herdPick);
-  SFX.voice("crow");
-  setTimeout(() => SFX.chorus(["moo","cluck","baa","oink"], 260), 700);
+  SFX.speak("crow", -.5, 1);
+  setTimeout(() => SFX.chorus(["moo","cluck","baa","oink","honk","bray"], 240), 700);
+  setTimeout(() => SFX.commotion(4), 1800);
+  /* a silent farm is nearly always a muted tab, so say so once */
+  if (SFX.muted) setTimeout(() => toast("🔇", "Sound is off — press M or tap 🔊", true), 1200);
   setTimeout(() => startTurn(), 1400);
 }
 
