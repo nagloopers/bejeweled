@@ -115,7 +115,7 @@ body{margin:0;overflow:hidden;color:var(--text);
 .tile.start .tlabel{font-size:.5rem;font-weight:800;letter-spacing:.14em;color:#7dffd9}
 @keyframes iconPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
 @keyframes crownPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 5px rgba(255,209,102,.6))}50%{transform:scale(1.22);filter:drop-shadow(0 0 12px rgba(255,209,102,.95))}}
-#creatures{position:absolute;inset:0;z-index:2;pointer-events:none}
+#creatures{position:absolute;inset:0;z-index:2;pointer-events:none;transform-origin:0 0}
 #fx{position:absolute;inset:0;z-index:3;pointer-events:none}
 /* creature styles (SVG) */
 .snake-body{stroke-linecap:round;fill:none}
@@ -296,7 +296,10 @@ function buildPath(from, roll){
   return {path:path, final:pos};
 }
 
-/* one board layout: 5 ladders, 4 snakes, plus wild tiles */
+/* one board layout: 5 ladders, 4 snakes, plus wild tiles.
+   Creatures are anchored one per horizontal band (bottom → top) so every
+   re-weave spreads snakes & ladders evenly across the whole board instead
+   of clumping them in one region. */
 function genLayout(rand){
   rand=rand||Math.random;
   var L={ladders:{},snakes:{},portal:[],trap:[],coin:[],bolt:[]};
@@ -308,28 +311,59 @@ function genLayout(rand){
     }
     return -1;
   }
-  function reserve(ns){for(var i=0;i<ns.length;i++)if(ns[i]>0)taken[ns[i]]=true;}
-  var placed,guard,s,e,h,t;
-  placed=0;guard=0;
-  while(placed<5&&guard++<500){
-    s=free(2,64); if(s<0)continue;
-    e=s+10+((rand()*24)|0);           // 10..33 higher
-    if(e>99||taken[e])continue;
-    taken[s]=true;taken[e]=true;L.ladders[s]=e;placed++;
+  function shuffle(a){
+    for(var i=a.length-1;i>0;i--){
+      var j=(rand()*(i+1))|0, tmp=a[i];a[i]=a[j];a[j]=tmp;
+    }
+    return a;
   }
-  placed=0;guard=0;
-  while(placed<4&&guard++<500){
-    h=free(38,99); if(h<0)continue;
-    t=h-(10+((rand()*24)|0));          // 10..34 lower
-    if(t<2||taken[t])continue;
-    taken[h]=true;taken[t]=true;L.snakes[h]=t;placed++;
+  /* five horizontal bands, bottom row → top row */
+  var bands=[[2,20],[21,40],[41,60],[61,80],[81,99]];
+  var s,e,h,t,placed,guard;
+  /* ladders: one base per band, climbing 10..33 (clamped at 99) */
+  var lb=shuffle(bands.slice());
+  for(var li=0;li<lb.length;li++){
+    placed=0;guard=0;
+    while(placed<1&&guard++<300){
+      s=free(lb[li][0],lb[li][1]); if(s<0)continue;
+      e=s+Math.min(10+((rand()*24)|0),99-s);
+      if(e-s<8||e>99||taken[e])continue;
+      taken[s]=true;taken[e]=true;L.ladders[s]=e;placed++;
+    }
   }
+  /* snakes: one head per band (upper four bands), falling 10..34 (clamped at 2) */
+  var sb=shuffle(bands.slice(1));
+  for(var si=0;si<sb.length;si++){
+    placed=0;guard=0;
+    while(placed<1&&guard++<300){
+      h=free(sb[si][0],sb[si][1]); if(h<0)continue;
+      t=h-Math.min(10+((rand()*24)|0),h-2);
+      if(h-t<8||t<2||taken[t])continue;
+      taken[h]=true;taken[t]=true;L.snakes[h]=t;placed++;
+    }
+  }
+  /* wild tiles: placed in the least-loaded band (creature endpoints count
+     toward the load) so the special icons spread across the board too */
+  function bandOf(n){
+    for(var bi=0;bi<bands.length;bi++)
+      if(n>=bands[bi][0]&&n<=bands[bi][1])return bi;
+    return 0;
+  }
+  var load=[0,0,0,0,0];
+  for(s in L.ladders){load[bandOf(+s)]++;load[bandOf(L.ladders[s])]++;}
+  for(h in L.snakes){load[bandOf(+h)]++;load[bandOf(L.snakes[h])]++;}
   var kinds=[["portal",3],["trap",2],["coin",3],["bolt",3]];
   for(var k=0;k<kinds.length;k++){
     var arr=[];
     for(var i2=0;i2<kinds[k][1];i2++){
-      var n=free(2,99);
-      if(n>0){arr.push(n);taken[n]=true;}   // reserve immediately: no two wild tiles may share a square
+      var n=-1, guard2=0, miss=0, b=-1;
+      while(n<0&&guard2++<300){
+        if(miss>0&&miss%4===3)b=((rand()*bands.length)|0);
+        else{b=0;for(var bi2=1;bi2<bands.length;bi2++)if(load[bi2]<load[b])b=bi2;}
+        n=free(bands[b][0],bands[b][1]);
+        if(n<0)miss++;
+      }
+      if(n>0){arr.push(n);taken[n]=true;load[bandOf(n)]++;}  // reserve immediately: no two wild tiles may share a square
     }
     L[kinds[k][0]]=arr;
   }
@@ -613,6 +647,7 @@ var S={
   players:null,
   turn:0,
   busy:false,
+  lastProgress:0,           // heartbeat for the stuck-turn watchdog
   turnCount:0,
   best:0,
   dieRx:-24, dieRy:38, dieRolling:false
@@ -642,12 +677,19 @@ var boardPx=400, cellPx=40;
 function buildTiles(){
   tilesEl.innerHTML="";
   var frag=document.createDocumentFragment();
-  for(var n=100;n>=1;n--){
-    (function(n){
+  /* the grid fills left→right, top→bottom, but tileU() — which pieces, snakes,
+     ladders and particles all use — is classic boustrophedon: tile 1 bottom-
+     left, row 2 right→left, etc. Derive the tile number from each grid cell
+     (inverting tileU's row/column math) so the printed numbers, GO and the
+     crown sit exactly where the pieces and creature tracks expect them. */
+  for(var rTop=0;rTop<ROWS;rTop++){
+    var rBot=ROWS-1-rTop;
+    for(var c=0;c<COLS;c++){
+      (function(n){
       var d=document.createElement("div");
       d.className="tile";
-      var idx=n-1,row=(idx/10)|0,c=idx%10;if(row&1)c=9-c;
-      if((row+c)%2===1)d.className+=" alt";
+      var idx=n-1,row=(idx/COLS)|0,cu=idx%COLS;if(row&1)cu=COLS-1-cu;
+      if((row+cu)%2===1)d.className+=" alt";
       d.dataset.n=n;
       var tnum=document.createElement("span");
       tnum.className="tnum";tnum.textContent=n;
@@ -660,7 +702,8 @@ function buildTiles(){
         d.appendChild(iconSpan("👑","ticon"));
       }
       frag.appendChild(d);
-    })(n);
+      })(rBot*COLS+(rBot&1?COLS-1-c:c)+1);
+    }
   }
   tilesEl.appendChild(frag);
 }
@@ -805,14 +848,19 @@ function pieceHome(i){
   var off=(S.players[0].pos===S.players[1].pos)? (i===0?-0.13:0.13)*100 : 0;
   return {x:u.x+off, y:u.y};
 }
+/* The #tiles grid is inset 6px with a 2px cell gap, so its real cells are
+   slightly smaller than a naive 10% split of the board. Map the ideal
+   1000-space onto the actual grid geometry — px = u*(boardPx-10)/1000 + 5 —
+   so pieces, creature tracks and particles sit exactly on their tiles. */
 function unitToPx(u){
-  return {x:u.x/1000*boardPx, y:u.y/1000*boardPx};
+  var k=(boardPx-10)/1000;
+  return {x:u.x*k+5, y:u.y*k+5};
 }
+/* x/y are board pixels (callers pass unitToPx output) */
 function setPiecePx(i,x,y,withHop){
   var P=pieceEls[i]; if(!P)return;
   P.px=x;P.py=y;
-  var s=boardPx/1000;
-  P.el.style.transform="translate3d("+(x*s-P.el.offsetWidth/2)+"px,"+(y*s-P.el.offsetHeight/2)+"px,0)";
+  P.el.style.transform="translate3d("+(x-P.el.offsetWidth/2)+"px,"+(y-P.el.offsetHeight/2)+"px,0)";
   if(withHop&&P.mode!=="free"){
     P.el.classList.remove("hop");
     void P.el.offsetWidth;
@@ -834,7 +882,7 @@ function syncPieces(instant){
 var PARTS=[], fxCtx=fxCanvas.getContext("2d");
 function burst(u,o){
   o=o||{};
-  var x=u.x/1000*boardPx, y=u.y/1000*boardPx;
+  var pu=unitToPx(u), x=pu.x, y=pu.y;
   var n=o.n||12, speed=o.speed||130, size=o.size||2.6, life=o.life||0.7;
   for(var i=0;i<n;i++){
     var a=Math.random()*Math.PI*2, v=speed*(0.35+Math.random()*0.85);
@@ -868,8 +916,8 @@ function animCreatures(dt){
     var LG=creatureGeo.ladders[k];
     if(!LG.els||LG.els.g.parentNode===null)continue;
     if(Math.random()<dt*0.55){
-      pp=LG.geo.track.pointAt(Math.random());
-      cx=pp.x/1000*boardPx;cy=pp.y/1000*boardPx;
+      pp=unitToPx(LG.geo.track.pointAt(Math.random()));
+      cx=pp.x;cy=pp.y;
       PARTS.push({x:cx+(Math.random()*12-6),y:cy+(Math.random()*8-4),
         vx:Math.random()*10-5,vy:-16-Math.random()*24,age:0,
         life:0.7+Math.random()*0.7,size:1.4+Math.random()*1.2,
@@ -1431,6 +1479,9 @@ function layout(){
   cellPx=size/10;
   boardEl.style.width=size+"px";
   boardEl.style.height=size+"px";
+  /* the creature SVG lives in the ideal 1000-unit space; scale+shift it so
+     its endpoints land exactly on the inset/gap tile grid (see unitToPx) */
+  svgEl.style.transform="translate(5px,5px) scale("+((size-10)/size)+")";
   document.documentElement.style.setProperty("--board",size+"px");
   document.documentElement.style.setProperty("--cell",(size/10)+"px");
   document.documentElement.style.setProperty("--piece",Math.max(14,Math.min(30,size/10*0.46))+"px");

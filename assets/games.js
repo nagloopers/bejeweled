@@ -27,6 +27,14 @@ window.GAMES = [
     tag: "puzzle"
   },
   {
+    slug: "bejeweled2",
+    title: "Gleam",
+    description: "A gilded take on match-three — forge flame, star & prism gems and ride the cascades.",
+    src: "games/bejeweled2/index.html",
+    cover: "games/bejeweled2/cover.png",
+    tag: "puzzle"
+  },
+  {
     slug: "tetris",
     title: "Tetris",
     description: "Classic stack 'em — SRS kicks, 7-bag, hold & ghost, T-spins and combos.",
@@ -43,6 +51,14 @@ window.GAMES = [
     tag: "casual"
   },
   {
+    slug: "slots2",
+    title: "Golden Nebula Slots",
+    description: "A 5-reel cosmic video slot — 20 paylines, wild stars, free spins at triple pay. Demo credits, no real money.",
+    src: "games/slots2/index.html",
+    cover: "games/slots2/cover.png",
+    tag: "casino"
+  },
+  {
     slug: "solitaire",
     title: "Solitaire",
     description: "Classic Klondike — drag cards, build foundations, beat the clock.",
@@ -51,12 +67,28 @@ window.GAMES = [
     tag: "puzzle"
   },
   {
+    slug: "barnstorm",
+    title: "Barnstorm: Harvest Rush",
+    description: "A 3D farming board game on a snaking track — plant crops, race the weather, buy livestock, and pick how many runs to the barn it takes.",
+    src: "games/barnstorm/index.html",
+    cover: "games/barnstorm/cover.png",
+    tag: "farm"
+  },
+  {
     slug: "snakes-ladders",
     title: "Snakes & Ladders",
     description: "Neon jungle crown race — slithering snakes, glowing ladders, portals, traps & lightning.",
     src: "games/snakes-ladders/index.html",
     cover: "games/snakes-ladders/cover.png",
     tag: "classic"
+  },
+  {
+    slug: "barnyard-bonanza",
+    title: "Barnyard Bonanza",
+    description: "A Monopoly-style farm fortune race — buy pastures & barns, collect rent, dodge Fox Alerts, hot-seat for 2-4 farmers.",
+    src: "games/barnyard-bonanza/index.html",
+    cover: "games/barnyard-bonanza/cover.png",
+    tag: "board"
   },
   // {
   //   slug: "tictactoe",

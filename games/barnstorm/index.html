@@ -1,0 +1,3559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#1d3b23" />
+<title>Barnstorm: Harvest Rush</title>
+<style>
+/* ============================================================
+   BARNSTORM: HARVEST RUSH
+   A 3D serpentine farming race. Single file, no dependencies.
+   ============================================================ */
+:root{
+  --ink:#fdf7e6; --dim:#c9bda0; --faint:#9a917c;
+  --panel:rgba(26,20,13,.82); --panel2:rgba(38,29,18,.92);
+  --line:rgba(255,228,168,.16);
+  --gold:#ffd166; --amber:#ffa62b; --leaf:#8ede63; --sky:#7fd4ff;
+  --rose:#ff7a90; --violet:#b892ff;
+  --cell:84px; --h:16px; --gap:4px;
+  --tilt:56deg; --ntilt:-56deg; --yaw:0deg; --nyaw:0deg;
+  --zoom:1; --px:0px; --py:0px;
+  --shadow-lg:0 24px 60px rgba(0,0,0,.45);
+  --font:"Baloo 2","Segoe UI",system-ui,-apple-system,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  overflow:hidden;color:var(--ink);font-family:var(--font);
+  user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;
+  background:#0f1a13;
+}
+button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none}
+h1,h2,h3,h4,p{margin:0}
+
+/* ============================================================
+   1. SKY + WEATHER + SCENERY (fixed layers behind everything)
+   ============================================================ */
+#sky{position:fixed;inset:0;z-index:0;overflow:hidden;
+  transition:background 2.4s ease;
+  background:linear-gradient(180deg,#5fc0ff 0%,#9adcff 30%,#d9f2c4 52%,#8ccb5d 66%,#4f9b3f 100%);}
+#sky.sun{background:linear-gradient(180deg,#54baff 0%,#96dcff 28%,#e3f5c8 52%,#8ecd5e 66%,#4f9b3f 100%)}
+#sky.rain{background:linear-gradient(180deg,#4e6d84 0%,#7e9aad 30%,#9db79b 54%,#5f8a4c 68%,#3a6c32 100%)}
+#sky.storm{background:linear-gradient(180deg,#2b3644 0%,#4c5a6b 28%,#6e7d74 54%,#42633c 68%,#284d26 100%)}
+#sky.drought{background:linear-gradient(180deg,#ffa94d 0%,#ffcf8d 30%,#f6e3ab 54%,#c6a352 68%,#9d7a35 100%)}
+#sky.rainbow{background:linear-gradient(180deg,#6cc8ff 0%,#a9e4ff 26%,#ffe9c2 50%,#9bd968 66%,#4f9b3f 100%)}
+
+#sun{position:absolute;top:5vh;left:7vw;width:86px;height:86px;border-radius:50%;
+  background:radial-gradient(circle at 36% 32%,#fffce8,#ffe063 52%,#ffab23);
+  box-shadow:0 0 90px 28px rgba(255,205,80,.5);animation:sunPulse 7s ease-in-out infinite;
+  transition:opacity 1.6s ease,transform 1.6s ease}
+@keyframes sunPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+#sun .rays{position:absolute;inset:-46px;border-radius:50%;
+  background:repeating-conic-gradient(rgba(255,219,108,.42) 0 4deg,transparent 4deg 15deg);
+  -webkit-mask:radial-gradient(circle,transparent 38%,#000 40%);mask:radial-gradient(circle,transparent 38%,#000 40%);
+  animation:spin 34s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#sky.rain #sun,#sky.storm #sun{opacity:.12;transform:scale(.85)}
+
+.cloud{position:absolute;width:150px;height:44px;border-radius:44px;background:#fff;opacity:.92;
+  box-shadow:38px -18px 0 12px #fff,-34px -11px 0 6px #fff,78px -6px 0 3px rgba(255,255,255,.92);
+  animation:drift linear infinite;transition:filter 2s ease}
+@keyframes drift{from{transform:translateX(-300px)}to{transform:translateX(118vw)}}
+.cl1{top:8vh;animation-duration:88s;animation-delay:-24s}
+.cl2{top:19vh;animation-duration:120s;animation-delay:-80s;opacity:.7;zoom:.72}
+.cl3{top:3vh;animation-duration:150s;animation-delay:-55s;opacity:.6;zoom:.55}
+.cl4{top:26vh;animation-duration:104s;animation-delay:-14s;opacity:.5;zoom:.62}
+#sky.storm .cloud,#sky.rain .cloud{filter:brightness(.62) saturate(.5)}
+
+.bird{position:absolute;z-index:1;animation:fly linear infinite;font-size:16px}
+.bird i{display:inline-block;font-style:normal;animation:flap 1.2s ease-in-out infinite alternate}
+@keyframes fly{from{transform:translateX(-10vw)}to{transform:translateX(112vw)}}
+@keyframes flap{from{transform:translateY(0) scaleX(1)}50%{transform:translateY(-6px) scaleX(.72)}to{transform:translateY(2px) scaleX(1)}}
+.bd1{top:15vh;animation-duration:40s;animation-delay:-6s}
+.bd2{top:23vh;animation-duration:56s;animation-delay:-34s;opacity:.7;font-size:12px}
+#sky.storm .bird{display:none}
+
+#rainbow{position:absolute;left:50%;top:6vh;width:120vw;height:70vh;transform:translateX(-50%);
+  border-radius:50% 50% 0 0/100% 100% 0 0;opacity:0;transition:opacity 2s ease;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 100% at 50% 100%, transparent 0 62%,
+      rgba(255,90,90,.42) 62% 65%, rgba(255,175,70,.42) 65% 68%, rgba(255,235,90,.42) 68% 71%,
+      rgba(120,230,120,.42) 71% 74%, rgba(110,190,255,.42) 74% 77%, rgba(180,140,255,.42) 77% 80%, transparent 80%);}
+#sky.rainbow #rainbow{opacity:1}
+
+#rainLayer{position:fixed;inset:0;z-index:3;pointer-events:none;overflow:hidden;opacity:0;transition:opacity 1.2s ease}
+#rainLayer.on{opacity:1}
+.drop{position:absolute;top:-14vh;width:2px;border-radius:2px;
+  background:linear-gradient(180deg,rgba(210,240,255,0),rgba(210,240,255,.85));
+  animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(128vh)}}
+#heat{position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity 1.4s ease;
+  background:repeating-linear-gradient(0deg,rgba(255,220,150,.05) 0 3px,transparent 3px 8px)}
+#heat.on{opacity:1;animation:shimmer 3.5s ease-in-out infinite}
+@keyframes shimmer{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+#flash{position:fixed;inset:0;z-index:6;pointer-events:none;background:#fff;opacity:0}
+#flash.go{animation:lightning .7s ease-out}
+@keyframes lightning{0%{opacity:0}6%{opacity:.85}12%{opacity:.1}20%{opacity:.7}34%{opacity:.05}100%{opacity:0}}
+
+/* distant hills / far scenery */
+#far{position:fixed;left:0;right:0;bottom:0;height:46vh;z-index:1;pointer-events:none}
+.hill{position:absolute;bottom:22vh;border-radius:50% 50% 0 0/100% 100% 0 0;opacity:.85}
+.h1{left:-8vw;width:58vw;height:16vh;background:linear-gradient(180deg,#71b957,#4c8c3c)}
+.h2{right:-6vw;width:50vw;height:20vh;background:linear-gradient(180deg,#67ae4e,#437f35)}
+.h3{left:26vw;width:40vw;height:12vh;background:linear-gradient(180deg,#7cc35f,#549341);opacity:.7}
+#mill{position:absolute;right:7vw;bottom:30vh;text-align:center;opacity:.9}
+#mill .tower{width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;
+  border-bottom:74px solid #e8d6ae;margin:0 auto;filter:drop-shadow(0 6px 10px rgba(0,0,0,.25))}
+#mill .blades{position:absolute;left:50%;top:-16px;width:96px;height:96px;margin-left:-48px;
+  animation:spin 9s linear infinite;
+  background:
+    linear-gradient(90deg,transparent 46%,#f7e9c6 46% 54%,transparent 54%),
+    linear-gradient(0deg,transparent 46%,#f7e9c6 46% 54%,transparent 54%);
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.3))}
+#mill .hub{position:absolute;left:50%;top:26px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#c9a15c}
+.tree{position:absolute;bottom:24vh;font-size:44px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.25));
+  animation:sway 6s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes sway{0%,100%{transform:rotate(-2.5deg)}50%{transform:rotate(2.5deg)}}
+.t1{left:4vw;bottom:27vh}.t2{left:14vw;bottom:24vh;font-size:34px;animation-delay:-2s}
+.t3{right:22vw;bottom:26vh;font-size:38px;animation-delay:-3.4s}
+#farBarn{position:absolute;left:19vw;bottom:29vh;font-size:56px;filter:drop-shadow(0 10px 12px rgba(0,0,0,.3))}
+#farCows{position:absolute;left:32vw;bottom:25vh;font-size:22px;letter-spacing:12px;opacity:.9}
+#bgTractor{position:absolute;bottom:23.5vh;font-size:34px;animation:crawl 46s linear infinite;
+  filter:drop-shadow(0 6px 8px rgba(0,0,0,.28))}
+@keyframes crawl{from{transform:translateX(-14vw) scaleX(1)}49%{transform:translateX(112vw) scaleX(1)}
+  50%{transform:translateX(112vw) scaleX(-1)}99%{transform:translateX(-14vw) scaleX(-1)}100%{transform:translateX(-14vw) scaleX(1)}}
+
+/* ============================================================
+   2. THE 3D BOARD
+   A flat plane tilted on X; every icon is a "billboard" standee
+   that counter-rotates so it stands upright facing the camera.
+   ============================================================ */
+#stage{position:fixed;left:0;right:0;top:0;bottom:0;z-index:4;
+  perspective:1500px;perspective-origin:50% 44%;overflow:hidden;touch-action:none}
+#board{position:absolute;left:50%;top:50%;
+  width:calc(var(--cell)*7);height:calc(var(--cell)*7);
+  transform-style:preserve-3d;
+  transform:translate(-50%,-50%) translate3d(var(--px),var(--py),0)
+            scale(var(--zoom)) rotateX(var(--tilt)) rotateZ(var(--yaw));
+  transition:transform .55s cubic-bezier(.22,.9,.24,1)}
+#board.nosnap{transition:none}
+
+/* the soil bed under the whole board */
+#bed{position:absolute;inset:calc(var(--cell)*-.62);transform:translateZ(-8px);
+  border-radius:26px;
+  background:
+    repeating-linear-gradient(90deg,rgba(0,0,0,.05) 0 calc(var(--cell)/3),transparent calc(var(--cell)/3) calc(var(--cell)/1.5)),
+    radial-gradient(circle at 30% 20%,#6ab04a,#4b8c39 55%,#3b6f2d 100%);
+  box-shadow:0 0 0 6px rgba(63,44,22,.55),0 40px 70px rgba(0,0,0,.45)}
+#bed::after{content:"";position:absolute;inset:10px;border-radius:20px;
+  border:3px dashed rgba(255,246,210,.22)}
+
+/* dirt road drawn through tile centres */
+#road{position:absolute;left:0;top:0;overflow:visible;transform:translateZ(1px);pointer-events:none}
+#road .bank{fill:none;stroke:#6f5030;stroke-linecap:round;stroke-linejoin:round;opacity:.55}
+#road .rd{fill:none;stroke:#8c6239;stroke-linecap:round;stroke-linejoin:round;opacity:.92}
+#road .rdi{fill:none;stroke:#b98a53;stroke-linecap:round;stroke-linejoin:round}
+#road .dash{fill:none;stroke:rgba(255,242,205,.5);stroke-linecap:round;stroke-dasharray:6 16;stroke-width:3}
+#road .link{fill:none;stroke:var(--gold);stroke-width:4;stroke-dasharray:9 8;opacity:.85;
+  animation:linkFlow 1.4s linear infinite}
+@keyframes linkFlow{to{stroke-dashoffset:-34}}
+/* the return lane that carries you from the barn back round to the farmyard */
+#road .lane{stroke:#7a5530;opacity:.78}
+#road .arrow{stroke:rgba(255,236,178,.6);stroke-dasharray:4 15;stroke-width:3;
+  animation:laneFlow 2.2s linear infinite}
+@keyframes laneFlow{to{stroke-dashoffset:-38}}
+
+#tiles,#pawns,#bfx,#props,#decor,#yardProps{position:absolute;inset:0;transform-style:preserve-3d}
+#pawns,#bfx,#decor,#yardProps{pointer-events:none}
+/* the farmyard: packed earth and straw outside the starting tile */
+#yard{position:absolute;transform:translateZ(-3px);
+  border-radius:44% 38% 46% 40% / 40% 48% 36% 46%;
+  background:
+    repeating-linear-gradient(28deg,rgba(255,236,190,.12) 0 5px,transparent 5px 14px),
+    radial-gradient(circle at 38% 32%,#c9a878,#a8875a 52%,#8a6c44 100%);
+  box-shadow:0 0 0 5px rgba(122,96,58,.5),inset 0 8px 20px rgba(255,240,205,.22)}
+#yard::after{content:"";position:absolute;inset:9%;border-radius:inherit;
+  border:2px dashed rgba(90,66,36,.35)}
+#decor .bb .glyph{filter:drop-shadow(0 4px 6px rgba(0,0,0,.4))}
+
+/* ---- a tile is a 3D slab: top face + 4 walls ---- */
+.tile{position:absolute;width:var(--cell);height:var(--cell);
+  left:calc(var(--c) * var(--cell));top:calc((6 - var(--r)) * var(--cell));
+  transform-style:preserve-3d;cursor:pointer}
+.slab{position:absolute;inset:var(--gap);transform-style:preserve-3d;
+  transform:translateZ(var(--h))}
+/* Tiles never move — the board holds still. Feedback is light, not motion. */
+.f.top{transition:box-shadow .22s ease}
+.tile:hover .f.top{
+  box-shadow:inset 0 0 0 3px rgba(255,248,220,.75),inset 0 0 26px rgba(255,236,170,.45),
+             0 0 24px rgba(255,238,180,.6)}
+.f{position:absolute;backface-visibility:hidden}
+.f.top{inset:0;border-radius:11px;
+  background:var(--topbg,linear-gradient(145deg,#a87a4b,#8a5f37));
+  box-shadow:inset 0 0 0 2px rgba(255,246,214,.16),inset 0 -8px 14px rgba(0,0,0,.18)}
+.f.n,.f.s{left:0;width:100%;height:var(--h);transform-origin:50% 0;transform:rotateX(-90deg);
+  background:var(--sidebg,linear-gradient(180deg,#6f4a2b,#4b3018))}
+.f.s{top:100%}.f.n{top:0}
+.f.e,.f.w{top:0;height:100%;width:var(--h);transform-origin:0 50%;transform:rotateY(90deg);
+  background:var(--sidebg2,linear-gradient(180deg,#5d3d23,#3c2614))}
+.f.e{left:100%}.f.w{left:0}
+.f.n,.f.w{filter:brightness(.82)}
+
+/* flat art lying on the top face */
+.soil{position:absolute;inset:0;border-radius:11px;overflow:hidden}
+.soil::before{content:"";position:absolute;inset:0;opacity:.5;
+  background:repeating-linear-gradient(var(--furrow,0deg),rgba(0,0,0,.14) 0 4px,transparent 4px 11px)}
+.num{position:absolute;left:6px;top:5px;font-size:10px;font-weight:800;color:rgba(255,248,222,.5);
+  letter-spacing:.3px;transform:scaleY(var(--stretch,1.75));transform-origin:0 0}
+.tname{position:absolute;left:0;right:0;bottom:4px;text-align:center;font-size:9px;font-weight:800;
+  letter-spacing:.4px;text-transform:uppercase;color:rgba(255,250,228,.78);text-shadow:0 1px 2px rgba(0,0,0,.6);
+  transform:scaleY(var(--stretch,1.75));transform-origin:50% 100%}
+.ring{position:absolute;inset:4px;border-radius:9px;border:3px solid var(--oc,transparent);
+  box-shadow:0 0 12px var(--oc,transparent);opacity:.95}
+.rich{position:absolute;right:5px;top:4px;font-size:11px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))}
+
+/* ---- billboards: upright standees on a tilted plane ---- */
+.up{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;
+  transform:translateZ(var(--h))}
+.bb{position:absolute;left:calc(var(--cell)/-2);bottom:0;width:var(--cell);text-align:center;
+  transform-origin:50% 100%;transform:rotateZ(var(--nyaw)) rotateX(var(--ntilt));
+  pointer-events:none;line-height:1}
+.bb .glyph{display:inline-block;font-size:calc(var(--cell)*.42);
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.45));transform-origin:50% 100%}
+.bb .glyph.sm{font-size:calc(var(--cell)*.3)}
+.bb.idle .glyph{animation:bob 2.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-14%) scale(1.03)}}
+.bb.sway .glyph{animation:leafSway 3.2s ease-in-out infinite}
+@keyframes leafSway{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+.bb.pop .glyph{animation:popIn .62s cubic-bezier(.16,1.7,.4,1)}
+@keyframes popIn{0%{transform:scale(.1) translateY(40%)}60%{transform:scale(1.22) translateY(-8%)}100%{transform:scale(1)}}
+.bb.ripe .glyph{animation:ripeGlow 1.5s ease-in-out infinite}
+@keyframes ripeGlow{0%,100%{filter:drop-shadow(0 3px 4px rgba(0,0,0,.45)) drop-shadow(0 0 0 rgba(255,220,120,0));transform:scale(1)}
+  50%{filter:drop-shadow(0 3px 4px rgba(0,0,0,.45)) drop-shadow(0 0 14px rgba(255,222,120,.95));transform:scale(1.09)}}
+.bb .tag{display:block;margin-top:2px;font-size:9px;font-weight:800;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.growbar{display:block;width:58%;height:4px;margin:3px auto 0;border-radius:3px;
+  background:rgba(0,0,0,.45);overflow:hidden;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+.growbar i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#8ede63,#ffd166);
+  transition:width .5s ease}
+
+/* ---- pawns ---- */
+.pawn{position:absolute;width:0;height:0;transform-style:preserve-3d;z-index:5}
+.pawn .sh{position:absolute;left:-22px;top:-9px;width:44px;height:18px;border-radius:50%;
+  background:rgba(0,0,0,.34);filter:blur(4px);transition:opacity .1s}
+.pawn .lift{position:absolute;transform-style:preserve-3d;
+  transform:translateZ(calc(var(--h) + var(--lz,0px)))}
+.pawn .disc{position:absolute;left:-19px;top:-11px;width:38px;height:22px;border-radius:50%;
+  background:radial-gradient(ellipse at 40% 30%,#fff,var(--pc,#ffd166) 62%,rgba(0,0,0,.35));
+  box-shadow:0 0 14px var(--pc,#ffd166),inset 0 0 0 2px rgba(255,255,255,.55)}
+.pawn .bb{left:-34px;width:68px;
+  transform:rotateZ(var(--nyaw)) rotateX(var(--ntilt)) scaleY(var(--sq,1)) scaleX(calc(2 - var(--sq,1)))}
+.pawn .bb .glyph{font-size:34px}
+.pawn.turn .bb .glyph{animation:bob 1.1s ease-in-out infinite}
+.pawn.turn .disc{animation:discPulse 1.1s ease-in-out infinite}
+@keyframes discPulse{0%,100%{box-shadow:0 0 12px var(--pc),inset 0 0 0 2px rgba(255,255,255,.55)}
+  50%{box-shadow:0 0 30px 6px var(--pc),inset 0 0 0 2px #fff}}
+.pawn .crown{position:absolute;top:-52px;left:-10px;font-size:19px;opacity:0;transition:opacity .3s}
+.pawn.lead .crown{opacity:1;animation:bob 2s ease-in-out infinite}
+
+/* ---- barn at the finish ---- */
+.barnBig .glyph{font-size:calc(var(--cell)*.62)}
+.doors{position:absolute;left:calc(var(--cell)/-2);bottom:0;width:var(--cell);height:0;
+  transform-origin:50% 100%;transform:rotateZ(var(--nyaw)) rotateX(var(--ntilt))}
+
+/* ---- more life: smoke, spotlights, growth, idling ---------------------- */
+/* chimney smoke curling off the farmhouse */
+.smoke{position:absolute;left:0;bottom:0;width:0;height:0}
+.smoke i{position:absolute;left:-6px;bottom:0;width:12px;height:12px;border-radius:50%;
+  background:radial-gradient(circle at 40% 35%,rgba(255,253,250,.9),rgba(214,208,198,.5));
+  animation:puffUp 4.6s ease-out infinite}
+@keyframes puffUp{
+  0%{transform:translate(0,0) scale(.35);opacity:0}
+  14%{opacity:.75}
+  100%{transform:translate(var(--sx,16px),-72px) scale(2.4);opacity:0}}
+
+/* a ring of light under whoever's turn it is — flat on the ground, going nowhere */
+#spotlight{position:absolute;width:0;height:0;transform-style:preserve-3d;pointer-events:none;
+  transform:translateZ(calc(var(--h) + 2px));
+  opacity:0;transition:opacity .4s ease}
+#spotlight.on{opacity:1}
+#spotlight .ring{position:absolute;border-radius:50%;
+  left:calc(var(--cell)/-2);top:calc(var(--cell)/-3);
+  width:var(--cell);height:calc(var(--cell)/1.5);
+  border:3px solid var(--pc,#ffd166);box-shadow:0 0 22px var(--pc,#ffd166);
+  animation:spotPulse 1.9s ease-in-out infinite}
+@keyframes spotPulse{0%,100%{transform:scale(.82);opacity:.55}50%{transform:scale(1.06);opacity:1}}
+
+/* a crop putting on a spurt of growth */
+.bb.spurt .glyph{animation:spurt .6s cubic-bezier(.2,1.5,.35,1)!important}
+@keyframes spurt{
+  0%{transform:scaleY(.72) scaleX(1.12)}
+  45%{transform:scaleY(1.22) scaleX(.9) translateY(-10%)}
+  100%{transform:scaleY(1) scaleX(1)}}
+
+/* a farmer shifting their weight while they wait */
+.pawn .bb.glance .glyph{animation:glance 1.5s ease-in-out!important}
+@keyframes glance{
+  0%,100%{transform:translateY(0) rotate(0)}
+  20%{transform:translateY(-16%) rotate(-9deg)}
+  45%{transform:translateY(0) rotate(7deg)}
+  70%{transform:translateY(-8%) rotate(-4deg)}}
+
+/* the die jiggling in the cup before it goes */
+.die-scene.wobble{animation:dieWobble .42s ease-in-out}
+@keyframes dieWobble{
+  0%,100%{transform:translate(0,0) rotate(0)}
+  20%{transform:translate(-4px,-3px) rotate(-6deg)}
+  45%{transform:translate(5px,-2px) rotate(5deg)}
+  70%{transform:translate(-3px,1px) rotate(-3deg)}}
+
+/* a harvested crop flying to the farmer's card */
+.cropfly{position:fixed;z-index:31;font-size:26px;pointer-events:none;
+  animation:cropFly 1s cubic-bezier(.32,.05,.5,1) forwards}
+@keyframes cropFly{
+  0%{transform:translate(-50%,-50%) scale(.5) rotate(0);opacity:0}
+  18%{opacity:1;transform:translate(-50%,-160%) scale(1.3) rotate(-12deg)}
+  100%{transform:translate(calc(-50% + var(--fx)),calc(-50% + var(--fy))) scale(.4) rotate(190deg);opacity:0}}
+
+/* a skein of birds crossing the sky */
+.flock{position:fixed;z-index:2;pointer-events:none;white-space:nowrap;
+  animation:flockCross linear forwards}
+@keyframes flockCross{from{transform:translateX(-18vw)}to{transform:translateX(118vw)}}
+.flock i{display:inline-block;font-style:normal;margin:0 5px;
+  animation:flap 1s ease-in-out infinite alternate}
+
+/* the windmill leaning into a gust */
+#mill.gusty .blades{animation-duration:2.2s}
+#mill .blades{transition:none}
+
+/* the active farmer's card catching the light */
+.pc.act::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+  background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.16) 48%,transparent 62%);
+  background-size:260% 100%;animation:cardSheen 3.4s ease-in-out infinite}
+@keyframes cardSheen{0%{background-position:170% 0}60%,100%{background-position:-70% 0}}
+
+/* the sky turning over */
+#wx .big.turn{animation:wxTurn .9s cubic-bezier(.2,1.3,.35,1)}
+@keyframes wxTurn{0%{transform:rotateY(0) scale(1)}
+  50%{transform:rotateY(180deg) scale(1.35)}100%{transform:rotateY(360deg) scale(1)}}
+
+/* ---- wind, wildlife and reactions ------------------------------------- */
+/* a gust rolls across the board and every standee leans with it */
+.bb.gust .glyph{animation:gustLean .95s cubic-bezier(.3,.7,.4,1)!important}
+@keyframes gustLean{
+  0%{transform:rotate(0) translateX(0)}
+  22%{transform:rotate(-18deg) translateX(-8%) scaleY(.94)}
+  48%{transform:rotate(12deg) translateX(5%)}
+  72%{transform:rotate(-7deg)}
+  100%{transform:rotate(0) translateX(0)}}
+/* leaves and petals torn loose by the gust */
+.leaf{position:fixed;z-index:6;pointer-events:none;font-size:15px;
+  animation:leafBlow linear forwards}
+@keyframes leafBlow{
+  0%{transform:translate(0,0) rotate(0);opacity:0}
+  12%{opacity:.95}
+  100%{transform:translate(var(--lx),var(--ly)) rotate(var(--lr));opacity:0}}
+
+/* butterflies, bees and birds drifting over the field */
+#flyers{position:absolute;inset:0;transform-style:preserve-3d;pointer-events:none}
+.flyer{position:absolute;width:0;height:0;transform-style:preserve-3d;
+  animation:flyWander var(--ft,24s) ease-in-out infinite}
+@keyframes flyWander{
+  0%  {transform:translate3d(var(--x0),var(--y0),var(--z0))}
+  25% {transform:translate3d(var(--x1),var(--y1),var(--z1))}
+  50% {transform:translate3d(var(--x2),var(--y2),var(--z0))}
+  75% {transform:translate3d(var(--x3),var(--y3),var(--z1))}
+  100%{transform:translate3d(var(--x0),var(--y0),var(--z0))}}
+.flyer .glyph{animation:wingFlap .42s ease-in-out infinite alternate!important}
+@keyframes wingFlap{from{transform:scaleX(1) rotate(-7deg)}to{transform:scaleX(.6) rotate(7deg)}}
+
+/* an animal noticing you, in time with its voice */
+.bb.speak .glyph{animation:speakHop .72s cubic-bezier(.2,1.5,.4,1)!important}
+@keyframes speakHop{
+  0%{transform:translateY(0) scale(1)}
+  28%{transform:translateY(-34%) scale(1.14,.92)}
+  58%{transform:translateY(0) scale(.94,1.08)}
+  100%{transform:translateY(0) scale(1)}}
+/* a little puff of sound so you can see who spoke */
+.bb .say{position:absolute;left:50%;bottom:calc(100% - 4px);transform:translateX(-50%);
+  font-size:11px;opacity:0;white-space:nowrap;animation:sayPop .9s ease-out}
+@keyframes sayPop{0%{opacity:0;transform:translate(-50%,6px) scale(.5)}
+  30%{opacity:.95;transform:translate(-50%,-6px) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-18px) scale(1.1)}}
+
+/* thought bubble above the farmer whose turn it is */
+.bb.bubble{bottom:auto;top:-64px}
+.bb.bubble .glyph{font-size:26px;animation:bubbleUp 1.7s cubic-bezier(.2,1.4,.4,1) forwards}
+@keyframes bubbleUp{
+  0%{transform:translateY(16px) scale(.2);opacity:0}
+  22%{transform:translateY(-4px) scale(1.15);opacity:1}
+  70%{transform:translateY(-10px) scale(1);opacity:1}
+  100%{transform:translateY(-26px) scale(.9);opacity:0}}
+
+/* a crop coming ripe */
+.ripering{position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;
+  border:3px solid rgba(255,222,120,.95);box-shadow:0 0 18px rgba(255,222,120,.8);
+  animation:ripeRing .85s ease-out forwards}
+@keyframes ripeRing{to{transform:scale(5.5);opacity:0;border-width:1px}}
+
+/* dawn ripple: the whole field wakes up row by row */
+.tile.wake .f.top{animation:wakeGlow .8s ease-out}
+@keyframes wakeGlow{
+  0%{box-shadow:inset 0 0 0 2px rgba(255,246,214,.16),inset 0 -8px 14px rgba(0,0,0,.18)}
+  45%{box-shadow:inset 0 0 0 3px rgba(255,246,214,.7),inset 0 0 30px rgba(255,232,150,.75),
+      0 0 26px rgba(255,226,140,.5)}
+  100%{box-shadow:inset 0 0 0 2px rgba(255,246,214,.16),inset 0 -8px 14px rgba(0,0,0,.18)}}
+
+/* ---- board-level FX ---- */
+.dust{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.dust i{position:absolute;left:0;top:0;width:9px;height:9px;border-radius:50%;
+  background:rgba(226,203,160,.9);animation:puff .62s ease-out forwards}
+@keyframes puff{from{transform:translate(0,0) scale(.5);opacity:.9}
+  to{transform:translate(var(--dx),var(--dy)) scale(1.9);opacity:0}}
+.trail{position:absolute;width:0;height:0}
+.trail i{position:absolute;left:-5px;top:-3px;width:10px;height:7px;border-radius:50%;
+  background:rgba(226,203,160,.75);animation:trailFade .55s ease-out forwards}
+@keyframes trailFade{to{transform:scale(2.2) translateY(4px);opacity:0}}
+.coinfly{position:fixed;z-index:30;font-size:22px;pointer-events:none;
+  animation:coinFly .9s cubic-bezier(.3,.1,.5,1) forwards}
+@keyframes coinFly{0%{transform:translate(0,0) scale(.6) rotate(0);opacity:0}
+  15%{opacity:1;transform:translate(0,-26px) scale(1.15)}
+  100%{transform:translate(var(--cx),var(--cy)) scale(.45) rotate(420deg);opacity:0}}
+.float{position:fixed;z-index:30;font-weight:900;font-size:20px;pointer-events:none;
+  text-shadow:0 2px 6px rgba(0,0,0,.8);animation:floatUp 1.5s ease-out forwards}
+@keyframes floatUp{0%{transform:translate(-50%,0) scale(.6);opacity:0}
+  18%{opacity:1;transform:translate(-50%,-14px) scale(1.18)}
+  100%{transform:translate(-50%,-72px) scale(1);opacity:0}}
+.spark{position:fixed;z-index:29;pointer-events:none;font-size:15px;animation:sparkOut .95s ease-out forwards}
+@keyframes sparkOut{from{transform:translate(0,0) scale(.4);opacity:1}
+  to{transform:translate(var(--sx),var(--sy)) scale(1.3) rotate(var(--sr));opacity:0}}
+.shockwave{position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;
+  border:3px solid rgba(255,236,170,.9);animation:shock .7s ease-out forwards}
+@keyframes shock{to{transform:scale(7);opacity:0;border-width:1px}}
+
+/* ============================================================
+   3. UI CHROME — topbar, player cards, dock, dice
+   ============================================================ */
+.glass{background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border:1px solid var(--line);border-radius:18px;box-shadow:0 12px 34px rgba(0,0,0,.4)}
+
+#topbar{position:fixed;z-index:12;left:0;right:0;top:0;display:flex;align-items:center;gap:10px;
+  padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;pointer-events:none}
+#topbar>*{pointer-events:auto}
+#brand{display:flex;align-items:center;gap:9px;padding:7px 14px 7px 10px}
+#brand .mark{font-size:24px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
+#brand b{font-size:15px;letter-spacing:.4px;display:block;line-height:1.05}
+#brand small{font-size:9.5px;color:var(--dim);letter-spacing:1.4px;text-transform:uppercase}
+
+#wx{display:flex;align-items:center;gap:11px;padding:7px 14px}
+#wx .big{font-size:26px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45));animation:bob 3.4s ease-in-out infinite}
+#wx .txt b{font-size:12.5px;display:block;line-height:1.15}
+#wx .txt small{font-size:9.5px;color:var(--dim)}
+#wx .day{font-size:11px;font-weight:900;color:var(--gold);padding:3px 9px;border-radius:999px;
+  background:rgba(255,209,102,.14);border:1px solid rgba(255,209,102,.3);white-space:nowrap}
+#wx .fc{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--faint);border-left:1px solid var(--line);padding-left:10px}
+#wx .fc i{font-style:normal;font-size:15px}
+
+#goal{padding:7px 13px;font-size:11px;color:var(--dim);max-width:210px;line-height:1.3}
+#goal b{color:var(--leaf);font-size:11.5px}
+.spacer{flex:1}
+.iconbtn{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:16px;
+  background:var(--panel);border:1px solid var(--line);transition:transform .14s,background .2s}
+.iconbtn:hover{transform:translateY(-2px);background:var(--panel2)}
+.iconbtn.off{opacity:.45}
+
+/* ---- left rail: player cards ---- */
+#rail{position:fixed;z-index:11;left:12px;top:calc(62px + env(safe-area-inset-top,0px));
+  display:flex;flex-direction:column;gap:8px;width:196px;max-height:calc(100vh - 220px);
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;padding-right:2px}
+.pc{padding:9px 11px;position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s;
+  border-left:4px solid var(--pc)}
+.pc.act{transform:translateX(6px);box-shadow:0 0 0 2px var(--pc),0 14px 30px rgba(0,0,0,.45)}
+.pc.act::after{content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120px 60px at 0% 50%,var(--pc),transparent 70%);opacity:.14}
+.pc.out{opacity:.45;filter:grayscale(.7)}
+.pc .row1{display:flex;align-items:center;gap:7px}
+.pc .av{font-size:20px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.pc .nm{font-size:12px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc .kind{font-size:8.5px;padding:2px 5px;border-radius:6px;background:rgba(255,255,255,.1);color:var(--dim);letter-spacing:.5px}
+.pc .coins{display:flex;align-items:baseline;gap:4px;margin-top:5px}
+.pc .coins b{font-size:19px;font-weight:900;color:var(--gold);letter-spacing:-.5px;
+  display:inline-block;transform-origin:50% 100%}
+.pc .coins b.rolling{animation:coinBump .35s ease-out;color:#fff}
+@keyframes coinBump{0%{transform:scale(1)}40%{transform:scale(1.22)}100%{transform:scale(1)}}
+.pc .coins span{font-size:9.5px;color:var(--faint)}
+.pc .bars{display:flex;gap:9px;margin-top:5px;font-size:9.5px;color:var(--dim);flex-wrap:wrap}
+.pc .bars i{font-style:normal;color:var(--ink);font-weight:800}
+.pc .zoo{display:flex;gap:2px;margin-top:5px;font-size:13px;min-height:16px;flex-wrap:wrap}
+.pc .prog{height:4px;border-radius:3px;background:rgba(0,0,0,.4);margin-top:7px;overflow:hidden}
+.pc .prog i{display:block;height:100%;background:linear-gradient(90deg,var(--pc),#fff);transition:width .5s ease}
+.pc .skipflag{position:absolute;right:8px;top:8px;font-size:12px}
+
+/* ---- bottom dock ---- */
+#dock{position:fixed;z-index:12;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));
+  transform:translateX(-50%);display:flex;align-items:flex-end;gap:12px;max-width:min(96vw,820px)}
+#diewrap{display:grid;place-items:center;gap:6px}
+.die-scene{width:82px;height:82px;perspective:560px;cursor:pointer;transition:transform .18s}
+.die-scene:hover{transform:translateY(-3px) scale(1.04)}
+.die-cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;
+  transform:rotateX(-22deg) rotateY(34deg);transition:transform .1s linear}
+.die-face{position:absolute;inset:0;border-radius:15px;display:grid;
+  grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:9px;
+  background:linear-gradient(145deg,#fff8e6,#f0dfba);border:1px solid rgba(120,84,40,.3);
+  box-shadow:inset 0 0 14px rgba(150,110,60,.25);
+  transform:rotateX(var(--fx,0deg)) rotateY(var(--fy,0deg)) translateZ(41px)}
+.die-face b{width:74%;height:74%;border-radius:50%;place-self:center;
+  background:radial-gradient(circle at 34% 30%,#6c4a24,#2f1d0c);box-shadow:inset 0 -2px 3px rgba(0,0,0,.5)}
+.f1{--fx:0deg;--fy:0deg}.f2{--fy:90deg}.f3{--fy:180deg}.f4{--fy:-90deg}.f5{--fx:90deg}.f6{--fx:-90deg}
+#dieHint{font-size:10px;color:var(--dim);letter-spacing:.6px;text-align:center;min-height:13px}
+
+#dockmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+#hint{padding:9px 14px;font-size:12.5px;line-height:1.35;min-height:40px;display:flex;align-items:center;gap:8px}
+#hint .who{font-weight:900;color:var(--gold)}
+#actions{display:flex;gap:7px;flex-wrap:wrap}
+.btn{padding:10px 17px;border-radius:13px;font-size:13px;font-weight:800;letter-spacing:.3px;
+  background:linear-gradient(180deg,#3c8f46,#276b31);border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 7px 18px rgba(0,0,0,.36),inset 0 1px 0 rgba(255,255,255,.28);
+  transition:transform .13s,filter .2s;white-space:nowrap}
+.btn:hover{transform:translateY(-2px);filter:brightness(1.1)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.42;pointer-events:none;filter:grayscale(.5)}
+.btn.gold{background:linear-gradient(180deg,#f0b93f,#c98a1c);color:#33220a}
+.btn.ghost{background:rgba(255,255,255,.08);border-color:var(--line)}
+.btn.red{background:linear-gradient(180deg,#c0503f,#8e3527)}
+.btn.blue{background:linear-gradient(180deg,#3d7fbf,#28598c)}
+.btn.big{padding:13px 26px;font-size:15px;border-radius:15px}
+.btn .k{font-size:9px;opacity:.6;margin-left:5px}
+.btn.pulse{animation:btnPulse 1.5s ease-in-out infinite}
+@keyframes btnPulse{0%,100%{box-shadow:0 7px 18px rgba(0,0,0,.36),0 0 0 0 rgba(255,209,102,.6)}
+  50%{box-shadow:0 7px 18px rgba(0,0,0,.36),0 0 0 11px rgba(255,209,102,0)}}
+
+/* ---- right rail: log + inspector ---- */
+#side{position:fixed;z-index:11;right:12px;top:calc(62px + env(safe-area-inset-top,0px));
+  width:212px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 190px)}
+#insp{padding:10px 12px}
+#insp .ih{display:flex;align-items:center;gap:7px}
+#insp .ih .g{font-size:22px}
+#insp .ih b{font-size:12.5px}
+#insp .ih small{display:block;font-size:9px;color:var(--faint);letter-spacing:.8px;text-transform:uppercase}
+#insp .id{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.4}
+#insp .chip{display:inline-block;margin:5px 4px 0 0;font-size:9.5px;padding:2px 7px;border-radius:7px;
+  background:rgba(255,255,255,.1);border:1px solid var(--line)}
+#log{padding:8px 10px;overflow-y:auto;font-size:11px;line-height:1.5;flex:1;min-height:90px;
+  scrollbar-width:thin;display:flex;flex-direction:column;gap:3px}
+#log div{opacity:0;animation:logIn .45s ease forwards;border-bottom:1px solid rgba(255,255,255,.05);padding-bottom:3px}
+@keyframes logIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:none}}
+#log b{color:var(--gold)}
+#log .lg{color:var(--leaf)}#log .lr{color:var(--rose)}#log .lb{color:var(--sky)}
+
+#toasts{position:fixed;z-index:34;left:50%;top:calc(76px + env(safe-area-inset-top,0px));
+  transform:translateX(-50%);display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
+.toast{padding:10px 20px;border-radius:14px;font-size:14px;font-weight:800;white-space:nowrap;
+  background:var(--panel2);border:1px solid var(--line);box-shadow:var(--shadow-lg);
+  animation:toastIn .4s cubic-bezier(.2,1.6,.4,1),toastOut .4s ease 2.1s forwards}
+@keyframes toastIn{from{opacity:0;transform:translateY(-22px) scale(.86)}to{opacity:1;transform:none}}
+@keyframes toastOut{to{opacity:0;transform:translateY(-14px) scale(.94)}}
+.toast.big{font-size:19px;padding:14px 30px}
+.toast .e{margin-right:7px;font-size:18px}
+
+/* ============================================================
+   4. SCREENS — setup, choice modal, help, victory
+   ============================================================ */
+.screen{position:fixed;inset:0;z-index:40;display:none;place-items:center;padding:16px;
+  background:radial-gradient(900px 600px at 50% 10%,rgba(24,40,24,.72),rgba(8,14,9,.9));
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);overflow-y:auto}
+.screen.on{display:grid;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.sheet{width:min(720px,100%);padding:22px;border-radius:24px;background:var(--panel2);
+  border:1px solid var(--line);box-shadow:var(--shadow-lg);animation:sheetIn .42s cubic-bezier(.2,1.3,.35,1)}
+@keyframes sheetIn{from{opacity:0;transform:translateY(26px) scale(.95)}to{opacity:1;transform:none}}
+.sheet h2{font-size:23px;letter-spacing:.3px;display:flex;align-items:center;gap:10px}
+.sheet h2 .e{font-size:28px}
+.sheet .sub{font-size:12px;color:var(--dim);margin-top:5px;line-height:1.45}
+.sheet h4{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);
+  margin:18px 0 8px;border-bottom:1px solid var(--line);padding-bottom:5px}
+
+/* setup: roster */
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px}
+.slot{padding:10px;border-radius:15px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+  display:flex;align-items:center;gap:9px;transition:transform .16s,box-shadow .2s;cursor:pointer}
+.slot:hover{transform:translateY(-2px)}
+.slot.on{box-shadow:0 0 0 2px var(--pc);background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.04))}
+.slot .av{font-size:26px;filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));transition:transform .2s}
+.slot.on .av{animation:bob 2.2s ease-in-out infinite}
+.slot .info{flex:1;min-width:0}
+.slot .info b{font-size:12.5px;display:block}
+.slot .info small{font-size:9.5px;color:var(--faint)}
+.slot .tog{font-size:9px;font-weight:900;padding:3px 7px;border-radius:8px;letter-spacing:.6px;
+  background:rgba(255,255,255,.1);border:1px solid var(--line)}
+.slot.on .tog.human{background:linear-gradient(180deg,#3c8f46,#276b31)}
+.slot.on .tog.cpu{background:linear-gradient(180deg,#3d7fbf,#28598c)}
+.modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
+.mode{padding:12px 13px;border-radius:15px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+  cursor:pointer;transition:transform .16s,box-shadow .2s;text-align:left}
+.mode:hover{transform:translateY(-2px)}
+.mode.on{box-shadow:0 0 0 2px var(--gold);background:linear-gradient(135deg,rgba(255,209,102,.16),rgba(255,255,255,.04))}
+.mode b{font-size:13px;display:flex;align-items:center;gap:7px}
+.mode small{display:block;font-size:10.5px;color:var(--dim);margin-top:4px;line-height:1.4}
+#lapPick{display:flex;align-items:center;gap:11px;margin-top:10px;padding:10px 13px;
+  border-radius:15px;background:rgba(255,255,255,.05);border:1px solid var(--line);flex-wrap:wrap}
+#lapPick.off{opacity:.45}
+#lapPick .lpl{font-size:11.5px;font-weight:800;letter-spacing:.3px}
+#lapPick .lpn{font-size:10.5px;color:var(--faint)}
+#lapPick .lpn b{color:var(--gold)}
+.segs{display:flex;gap:4px;background:rgba(0,0,0,.3);padding:3px;border-radius:11px}
+.seg{width:32px;height:28px;border-radius:8px;font-size:13px;font-weight:900;color:var(--dim);
+  transition:transform .14s,background .2s,color .2s}
+.seg:hover{transform:translateY(-2px);color:var(--ink)}
+.seg.on{background:linear-gradient(180deg,#f0b93f,#c98a1c);color:#33220a;
+  box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.setupfoot{display:flex;gap:9px;align-items:center;margin-top:20px;flex-wrap:wrap}
+.setupfoot .note{font-size:10.5px;color:var(--faint);flex:1;min-width:130px}
+
+/* choice modal (plant / market / animals) */
+#modal .sheet{width:min(600px,100%)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:9px;margin-top:6px}
+.card{padding:13px 11px;border-radius:16px;border:1px solid var(--line);cursor:pointer;text-align:center;
+  background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.03));
+  transition:transform .18s cubic-bezier(.2,1.4,.4,1),box-shadow .2s;position:relative;overflow:hidden}
+.card:hover{transform:translateY(-6px) scale(1.03);box-shadow:0 16px 32px rgba(0,0,0,.45)}
+.card.no{opacity:.35;pointer-events:none}
+.card .g{font-size:38px;display:block;filter:drop-shadow(0 4px 6px rgba(0,0,0,.45));
+  transition:transform .25s}
+.card:hover .g{transform:scale(1.14) rotate(-5deg)}
+.card b{display:block;font-size:12.5px;margin-top:5px}
+.card .meta{font-size:10px;color:var(--dim);margin-top:4px;line-height:1.5}
+.card .meta em{font-style:normal;color:var(--gold);font-weight:800}
+.card .cost{position:absolute;left:0;right:0;bottom:0;padding:4px;font-size:10px;font-weight:900;
+  background:rgba(0,0,0,.35);letter-spacing:.4px}
+.card .badge{position:absolute;right:6px;top:6px;font-size:9px;font-weight:900;padding:2px 6px;
+  border-radius:7px;background:var(--gold);color:#3a2a08}
+.modfoot{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap}
+
+/* event card flip */
+.eventcard{width:min(320px,86vw);margin:4px auto 0;padding:20px 18px;border-radius:20px;text-align:center;
+  background:linear-gradient(165deg,#fff6df,#e8d3a6);color:#3a2a10;
+  box-shadow:0 22px 50px rgba(0,0,0,.5),inset 0 0 0 3px rgba(255,255,255,.5);
+  animation:flipIn .75s cubic-bezier(.2,1.15,.3,1)}
+@keyframes flipIn{0%{transform:rotateY(94deg) scale(.82);opacity:0}
+  60%{transform:rotateY(-11deg) scale(1.04);opacity:1}100%{transform:none}}
+.eventcard .g{font-size:52px;display:block;filter:drop-shadow(0 4px 7px rgba(0,0,0,.28))}
+.eventcard b{display:block;font-size:17px;margin-top:8px;letter-spacing:.3px}
+.eventcard p{font-size:12.5px;margin-top:7px;color:#6b5228;line-height:1.5}
+.eventcard .kind{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#a0793a;font-weight:900}
+
+/* help */
+#help .sheet{width:min(780px,100%)}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:14px}
+.hbox{padding:12px 13px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+.hbox b{font-size:12px;display:block;margin-bottom:6px;color:var(--gold)}
+.hbox ul{margin:0;padding-left:16px;font-size:11px;color:var(--dim);line-height:1.65}
+.hbox li em{font-style:normal;color:var(--ink);font-weight:700}
+.legrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:7px;font-size:11px}
+.legrid div{display:flex;gap:7px;align-items:flex-start;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.04)}
+.legrid i{font-style:normal;font-size:16px;line-height:1.1}
+.legrid b{font-size:11px;display:block}
+.legrid small{color:var(--faint);font-size:10px;line-height:1.35;display:block}
+.keys{display:flex;flex-wrap:wrap;gap:6px;font-size:10.5px;color:var(--dim)}
+.keys kbd{background:rgba(255,255,255,.12);border:1px solid var(--line);border-radius:6px;
+  padding:2px 7px;font-family:inherit;font-weight:800;color:var(--ink)}
+
+/* victory */
+#win .sheet{width:min(620px,100%);text-align:center}
+#winCrown{font-size:76px;filter:drop-shadow(0 8px 16px rgba(0,0,0,.5));animation:crownIn 1s cubic-bezier(.2,1.5,.3,1)}
+@keyframes crownIn{0%{transform:scale(0) rotate(-180deg)}70%{transform:scale(1.25) rotate(12deg)}100%{transform:none}}
+#winName{font-size:27px;font-weight:900;margin-top:6px}
+#winSub{font-size:12.5px;color:var(--dim);margin-top:4px}
+#scores{margin-top:18px;display:flex;flex-direction:column;gap:7px}
+.srow{display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:14px;
+  background:rgba(255,255,255,.06);border-left:4px solid var(--pc);text-align:left;
+  animation:logIn .5s ease backwards}
+.srow .pos{font-size:15px;font-weight:900;width:26px;color:var(--gold)}
+.srow .av{font-size:23px}
+.srow .nm{flex:1;font-size:13px;font-weight:800}
+.srow .br{font-size:10px;color:var(--faint);display:block;font-weight:600;margin-top:2px}
+.srow .tot{font-size:19px;font-weight:900;color:var(--gold)}
+
+#confetti{position:fixed;inset:0;z-index:38;pointer-events:none;overflow:hidden}
+.conf{position:absolute;top:-8vh;font-size:19px;animation:confFall linear forwards}
+@keyframes confFall{0%{transform:translateY(0) rotate(0);opacity:1}
+  100%{transform:translateY(118vh) rotate(var(--cr,720deg));opacity:.25}}
+
+/* ============================================================
+   5. RESPONSIVE
+   ============================================================ */
+@media (max-width:1180px){
+  #side{width:186px}#rail{width:172px}
+}
+@media (max-width:980px){
+  #side{display:none}
+  #rail{flex-direction:row;width:auto;right:12px;max-height:none;overflow-x:auto;gap:6px;
+    top:calc(58px + env(safe-area-inset-top,0px));padding-bottom:4px}
+  .pc{min-width:136px;padding:7px 9px}
+  .pc.act{transform:translateY(4px)}
+  .pc .zoo,.pc .prog{display:none}
+  #goal{display:none}
+}
+@media (max-width:700px){
+  #brand small{display:none}#brand b{font-size:13px}
+  #wx .txt small{display:none}#wx .fc{display:none}
+  .die-scene{width:64px;height:64px}
+  .die-face{padding:7px;transform:rotateX(var(--fx,0deg)) rotateY(var(--fy,0deg)) translateZ(32px)}
+  #dock{gap:8px;width:calc(100vw - 20px)}
+  .btn{padding:9px 13px;font-size:12px}
+  #hint{font-size:11.5px;padding:7px 11px;min-height:34px}
+  .sheet{padding:17px;border-radius:19px}
+  .sheet h2{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ living sky ============ -->
+<div id="sky" class="sun">
+  <div id="rainbow"></div>
+  <div id="sun"><div class="rays"></div></div>
+  <div class="cloud cl1"></div><div class="cloud cl2"></div>
+  <div class="cloud cl3"></div><div class="cloud cl4"></div>
+  <div class="bird bd1"><i>🕊️</i></div><div class="bird bd2"><i>🐦</i></div>
+</div>
+<div id="far">
+  <div class="hill h1"></div><div class="hill h2"></div><div class="hill h3"></div>
+  <div id="mill"><div class="tower"></div><div class="blades"></div><div class="hub"></div></div>
+  <div id="farBarn">🏡</div>
+  <div id="farCows">🐄🐑</div>
+  <div class="tree t1">🌳</div><div class="tree t2">🌲</div><div class="tree t3">🌳</div>
+  <div id="bgTractor">🚜</div>
+</div>
+<div id="rainLayer"></div>
+<div id="heat"></div>
+<div id="flash"></div>
+
+<!-- ============ the 3D table ============ -->
+<div id="stage">
+  <div id="board">
+    <div id="bed"></div>
+    <div id="yard"></div>
+    <svg id="road" aria-hidden="true"></svg>
+    <div id="decor"></div>
+    <div id="yardProps"></div>
+    <div id="tiles"></div>
+    <div id="flyers"></div>
+    <div id="props"></div>
+    <div id="spotlight"><div class="ring"></div></div>
+    <div id="pawns"></div>
+    <div id="bfx"></div>
+  </div>
+</div>
+
+<!-- ============ chrome ============ -->
+<div id="topbar">
+  <div id="brand" class="glass">
+    <span class="mark">🚜</span>
+    <span><b>Barnstorm</b><small>Harvest Rush</small></span>
+  </div>
+  <div id="wx" class="glass">
+    <span class="day" id="dayTag">Day 1</span>
+    <span class="big" id="wxIcon">☀️</span>
+    <span class="txt"><b id="wxName">Sunny</b><small id="wxNote">Crops grow 1 stage a day</small></span>
+    <span class="fc">next<i id="wxNext">🌧️</i></span>
+  </div>
+  <div id="goal" class="glass"></div>
+  <span class="spacer"></span>
+  <button class="iconbtn" id="bSound" title="Sound (M)">🔊</button>
+  <button class="iconbtn" id="bMusic" title="Music">🎵</button>
+  <button class="iconbtn" id="bCam" title="Reset camera (C)">🎥</button>
+  <button class="iconbtn" id="bHelp" title="How to play (H)">❓</button>
+  <button class="iconbtn" id="bNew" title="New game (N)">🔄</button>
+</div>
+
+<div id="rail"></div>
+
+<div id="side">
+  <div id="insp" class="glass">
+    <div class="ih"><span class="g">👆</span><span><b>Inspect</b><small>tap any tile</small></span></div>
+    <div class="id">Hover or tap a tile to see what's growing there.</div>
+  </div>
+  <div id="log" class="glass" aria-live="polite"></div>
+</div>
+
+<div id="dock">
+  <div id="diewrap">
+    <div class="die-scene" id="dieScene" title="Roll (Space)">
+      <div class="die-cube" id="dieCube">
+        <div class="die-face f1"></div><div class="die-face f2"></div><div class="die-face f3"></div>
+        <div class="die-face f4"></div><div class="die-face f5"></div><div class="die-face f6"></div>
+      </div>
+    </div>
+    <div id="dieHint">tap to roll</div>
+  </div>
+  <div id="dockmain">
+    <div id="hint" class="glass">Setting up the farm…</div>
+    <div id="actions"></div>
+  </div>
+</div>
+
+<div id="toasts"></div>
+<div id="confetti"></div>
+
+<!-- ============ setup ============ -->
+<div id="setup" class="screen on">
+  <div class="sheet">
+    <h2><span class="e">🌻</span> Barnstorm: Harvest Rush</h2>
+    <p class="sub">A farm track that <b>snakes across the field</b> and loops home down the return lane.
+      You <b>plant, water and harvest</b> — no rent, no title deeds. Crops ripen with the weather,
+      livestock pay out every dawn, and you sweep up ripe fields just by driving over them.</p>
+    <h4>Pick your farmers — tap to join, tap the badge to switch Human / CPU</h4>
+    <div class="roster" id="roster"></div>
+    <h4>Season goal</h4>
+    <div class="modes" id="modes"></div>
+    <div id="lapPick">
+      <span class="lpl">Runs to the barn</span>
+      <div class="segs" id="lapSegs"></div>
+      <span class="lpn" id="lapNote"></span>
+    </div>
+    <div class="setupfoot">
+      <p class="note" id="setupNote">2–4 farmers. Play solo against the CPU or pass-and-play together.</p>
+      <button class="btn ghost" id="bHelp2">How to play</button>
+      <button class="btn gold big" id="bStart">Start the season 🌾</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ choice / event modal ============ -->
+<div id="modal" class="screen">
+  <div class="sheet">
+    <h2 id="mTitle"><span class="e">🌱</span> <span>Plant a crop</span></h2>
+    <p class="sub" id="mSub"></p>
+    <div id="mBody"></div>
+    <div class="modfoot" id="mFoot"></div>
+  </div>
+</div>
+
+<!-- ============ help ============ -->
+<div id="help" class="screen">
+  <div class="sheet">
+    <h2><span class="e">📖</span> How to play</h2>
+    <p class="sub">Barnstorm is a farming race. Move along the snaking track, work the land you stop on,
+      and build the richest farm before someone finishes their runs to the barn.</p>
+    <div class="hgrid" style="margin-top:14px">
+      <div class="hbox"><b>🎲 Your turn</b><ul>
+        <li>Roll the die and hop along the <em>serpentine track</em> — 49 plots winding up the field.</li>
+        <li>Roll a <em>6</em> and you get another roll (twice max).</li>
+        <li>Then you work the tile you landed on.</li>
+        <li>The track is a <em>closed loop</em>: tile 49 is the barn, and the <em>return lane</em>
+          carries you home to the <em>farmyard</em> — so you pass your own fields again and again.</li>
+      </ul></div>
+      <div class="hbox"><b>🚜 Gathering on the move</b><ul>
+        <li>Driving <em>straight over</em> one of your own ripe crops brings it in without stopping —
+          plant ahead of yourself and sweep the lot on a later lap.</li>
+        <li>Crossing <em>The Big Barn</em> pays <em>+120</em> and banks a run — but only if you
+          have covered a full lap of ground since your last one, so being blown backwards past it
+          by a twister earns a consolation <em>+40</em>, not a free run.</li>
+        <li>Rolling back through <em>The Farmyard</em> pays <em>+25</em> — and stopping there for a
+          meal pays another <em>+15</em>, while the dog, the cat and the chickens all come out to see you.</li>
+        <li>Rivals' crops are safe unless you <em>land</em> on them.</li>
+      </ul></div>
+      <div class="hbox"><b>🌱 Plots &amp; crops</b><ul>
+        <li>Land on <em>empty soil</em> → pay coins to plant one of three offered crops.</li>
+        <li>Land on <em>your ripe crop</em> → harvest it for full value.</li>
+        <li>Land on <em>your young crop</em> → water it, +1 day of growth.</li>
+        <li>Land on a <em>rival's ripe crop</em> → <em>scrump</em> it: you take 40%, they keep 60% —
+          or be neighbourly and take a 25 coin tip instead.</li>
+        <li>Land on a rival's young crop → lend a hand for a <em>15 coin tip</em>.</li>
+      </ul></div>
+      <div class="hbox"><b>☀️ Weather &amp; days</b><ul>
+        <li>A <em>day passes</em> when every farmer has had a turn.</li>
+        <li>Each dawn, crops grow by the weather: sun +1, rain +2, drought 0, storm +1 (and one crop may be flattened), rainbow +2 and richer harvests.</li>
+        <li>The forecast in the topbar shows tomorrow's sky.</li>
+      </ul></div>
+      <div class="hbox"><b>🐄 Livestock</b><ul>
+        <li><em>Coop tiles</em> let you buy an animal.</li>
+        <li>Every animal pays coins <em>every dawn</em>, forever — a farm engine.</li>
+        <li>Chicken 🐔 · Sheep 🐑 · Pig 🐖 · Cow 🐄 — each louder and richer than the last.</li>
+      </ul></div>
+      <div class="hbox"><b>🔊 The farmyard</b><ul>
+        <li>Every animal has a voice, and they answer to <em>everything</em> — dawn, harvests,
+          purchases, tractors, twisters and quiet moments in between.</li>
+        <li>A rooster calls up <em>every sunrise</em>, and your whole herd sings at payday.</li>
+        <li>The idle chatter picks real animals off the board, so what you hear is what you see.</li>
+        <li><kbd>M</kbd> mutes everything; 🎵 toggles just the music.</li>
+      </ul></div>
+      <div class="hbox"><b>🪨 Soil quality</b><ul>
+        <li><em>✨ Rich soil</em> — harvests worth 50% more.</li>
+        <li><em>🪨 Rocky soil</em> — crops need one extra day.</li>
+        <li>Plain soil is just plain soil.</li>
+      </ul></div>
+      <div class="hbox"><b>🔔 Ending the season</b><ul>
+        <li><em>🌾 Barn Runs</em>: you pick how many runs to the barn it takes — anywhere from
+          <em>1</em> for a sprint to <em>6</em> for an epic. The first farmer to finish them all calls
+          the Final Day. Everyone else gets one last turn, then every standing crop goes to market
+          (ripe at full price, young at half of what it has grown), herds are sold off, and the
+          <em>richest farm wins</em>.</li>
+        <li><em>⏱️ Quick Season</em>: ten days flat, then the same count-up. A short game.</li>
+        <li><em>🪙 Harvest Tycoon</em>: no clock at all — first farmer to bank 1,400 coins wins outright.</li>
+      </ul></div>
+    </div>
+    <h4>Tiles</h4>
+    <div class="legrid" id="legend"></div>
+    <h4>Controls</h4>
+    <div class="keys">
+      <span><kbd>Space</kbd> roll</span><span><kbd>Enter</kbd> confirm</span>
+      <span><kbd>1</kbd>–<kbd>3</kbd> pick a card</span><span><kbd>M</kbd> mute</span>
+      <span><kbd>C</kbd> reset camera</span><span><kbd>H</kbd>/<kbd>Esc</kbd> help</span>
+      <span><kbd>N</kbd> new game</span><span>drag the board to orbit · scroll to zoom</span>
+    </div>
+    <div class="modfoot"><button class="btn gold" id="bHelpClose">Got it 🌾</button></div>
+  </div>
+</div>
+
+<!-- ============ victory ============ -->
+<div id="win" class="screen">
+  <div class="sheet">
+    <div id="winCrown">🏆</div>
+    <div id="winName">—</div>
+    <div id="winSub">—</div>
+    <div id="scores"></div>
+    <div class="modfoot" style="justify-content:center">
+      <button class="btn gold big" id="bAgain">Plant another season 🌻</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   PART 1 — PURE GAME CORE  (no DOM, no audio: unit-testable on its own)
+   ========================================================================== */
+/*__LOGIC_START__*/
+const COLS = 7, ROWS = 7, NTILES = COLS * ROWS, LAST = NTILES - 1;
+
+const CROPS = {
+  corn:   {emoji:"🌽", seed:"🌱", name:"Corn",         cost:25,  value:55,  days:2, tint:"#ffd452"},
+  sunfl:  {emoji:"🌻", seed:"🌱", name:"Sunflower",    cost:30,  value:70,  days:2, tint:"#ffc93c"},
+  straw:  {emoji:"🍓", seed:"🌱", name:"Strawberry",   cost:40,  value:95,  days:3, tint:"#ff6b7a"},
+  pumpkin:{emoji:"🎃", seed:"🌱", name:"Pumpkin",      cost:50,  value:120, days:3, tint:"#ff9a3c"},
+  melon:  {emoji:"🍉", seed:"🌱", name:"Watermelon",   cost:70,  value:185, days:4, tint:"#5ec96a"},
+  wheat:  {emoji:"🌾", seed:"🌱", name:"Golden Wheat", cost:100, value:300, days:5, tint:"#e9c46a"},
+};
+const CROP_KEYS = Object.keys(CROPS);
+
+const ANIMALS = {
+  chicken:{emoji:"🐔", name:"Chicken", cost:70,  income:11, sfx:"cluck", makes:"eggs"},
+  sheep:  {emoji:"🐑", name:"Sheep",   cost:115, income:19, sfx:"baa",   makes:"wool"},
+  pig:    {emoji:"🐖", name:"Pig",     cost:160, income:28, sfx:"oink",  makes:"truffles"},
+  cow:    {emoji:"🐄", name:"Cow",     cost:225, income:42, sfx:"moo",   makes:"milk"},
+};
+const ANIMAL_KEYS = Object.keys(ANIMALS);
+
+const WEATHER = {
+  sun:    {emoji:"☀️",  name:"Sunny",        grow:1, mult:1,    note:"Crops gain 1 day of growth"},
+  rain:   {emoji:"🌧️", name:"Rain Shower",  grow:2, mult:1,    note:"Crops grow twice as fast"},
+  drought:{emoji:"🌵",  name:"Drought",      grow:0, mult:1,    note:"Nothing grows today"},
+  storm:  {emoji:"⛈️",  name:"Storm",        grow:1, mult:1,    note:"Growth, but a crop may be flattened"},
+  rainbow:{emoji:"🌈",  name:"Rainbow Day",  grow:2, mult:1.25, note:"Fast growth · harvests +25%"},
+};
+const WX_BAG = ["sun","sun","sun","rain","rain","drought","storm","rainbow"];
+
+/* ---- tile kinds ---------------------------------------------------------- */
+const KINDS = {
+  gate:   {emoji:"🏡", name:"The Farmyard", top:"linear-gradient(145deg,#e0c692,#bd9a5c)",
+           desc:"Home. Where every season begins, and where you're paid +25 every time you roll back through."},
+  plot:   {emoji:"",   name:"Plot",      top:"linear-gradient(145deg,#a87a4b,#875c34)",
+           desc:"Bare soil — plant something."},
+  well:   {emoji:"💧", name:"Well",      top:"linear-gradient(145deg,#6fc6e8,#3f95bd)",
+           desc:"Waters every crop you own: +1 day of growth each."},
+  market: {emoji:"🛒", name:"Market",    top:"linear-gradient(145deg,#f0b36a,#c98338)",
+           desc:"Sell every ripe crop you own from anywhere, at +25%."},
+  tractor:{emoji:"🚜", name:"Tractor",   top:"linear-gradient(145deg,#8bd35f,#4f9739)",
+           desc:"Hitch a ride — roar 3 tiles further up the track."},
+  gopher: {emoji:"🕳️", name:"Gopher Hole", top:"linear-gradient(145deg,#8d7757,#5d4a30)",
+           desc:"A gopher drags you back 3 tiles and nibbles 20 coins."},
+  bridge: {emoji:"🌉", name:"Rope Bridge", top:"linear-gradient(145deg,#c9a06a,#96703f)",
+           desc:"A shortcut clean across the field."},
+  twister:{emoji:"🌪️", name:"Twister",   top:"linear-gradient(145deg,#a9b6c6,#6a7686)",
+           desc:"Whirls you to a random tile — could be lovely, could be awful."},
+  coop:   {emoji:"🐔", name:"Coop",      top:"linear-gradient(145deg,#e8c88a,#bd9a53)",
+           desc:"Buy livestock. Animals pay you coins every single dawn."},
+  fair:   {emoji:"🎪", name:"County Fair", top:"linear-gradient(145deg,#d88ad0,#9a4f95)",
+           desc:"Draw a Farm Card — fortune or misfortune."},
+  barn:   {emoji:"🏚️", name:"The Big Barn", top:"linear-gradient(145deg,#d4645a,#a3403a)",
+           desc:"The finish line. Reaching it banks +150 and calls the Final Day."},
+};
+
+const LAYOUT = [
+  "gate","plot","plot","well","plot","fair","plot",
+  "plot","tractor","plot","gopher","coop","plot","bridge",
+  "plot","market","plot","well","plot","plot","twister",
+  "plot","plot","fair","plot","plot","plot","coop",
+  "tractor","plot","plot","bridge","plot","market","plot",
+  "plot","plot","plot","gopher","fair","plot","twister",
+  "plot","well","plot","coop","tractor","fair","barn",
+];
+const BRIDGES = {13:22, 31:40};   /* rope-bridge shortcuts: from -> to */
+
+/* deterministic RNG so a seed reproduces a board */
+function mulberry(seed){
+  let a = seed >>> 0;
+  return function(){
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function shuffle(arr, rnd){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(rnd() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function pick(arr, rnd){ return arr[Math.floor(rnd() * arr.length)]; }
+
+/* serpentine geometry: index 0 is bottom-left, rows alternate direction */
+function coordsOf(i){
+  const row = Math.floor(i / COLS);
+  const k = i % COLS;
+  const col = (row % 2 === 0) ? k : (COLS - 1 - k);
+  return {row, col};
+}
+
+function makeBoard(seed){
+  const rnd = mulberry(seed);
+  return LAYOUT.map((kind, i) => {
+    const {row, col} = coordsOf(i);
+    let soil = "plain";
+    if (kind === "plot"){
+      const r = rnd();
+      if (r < 0.17) soil = "rich";
+      else if (r < 0.32) soil = "rocky";
+    }
+    return {i, kind, row, col, soil, crop:null, animal:null, link:BRIDGES[i] ?? null};
+  });
+}
+
+/* ---- crop maths ---------------------------------------------------------- */
+function daysNeeded(tile, crop){
+  return CROPS[crop].days + (tile.soil === "rocky" ? 1 : 0);
+}
+function isRipe(tile){
+  return !!tile.crop && tile.crop.grown >= tile.crop.need;
+}
+function cropProgress(tile){
+  if (!tile.crop) return 0;
+  return Math.min(1, tile.crop.grown / tile.crop.need);
+}
+function harvestValue(tile, wxMult){
+  if (!tile.crop) return 0;
+  const base = CROPS[tile.crop.key].value;
+  const soil = tile.soil === "rich" ? 1.5 : 1;
+  return Math.round(base * soil * (wxMult || 1));
+}
+function growthToday(wxKey){ return WEATHER[wxKey].grow; }
+
+/* ---- players ------------------------------------------------------------- */
+const AVATARS = [
+  {id:"cluck",  emoji:"🐓", name:"Cluck",  color:"#ff8a5c", blurb:"rooster with a plan"},
+  {id:"bella",  emoji:"🐄", name:"Bella",  color:"#7fd4ff", blurb:"never rushes a field"},
+  {id:"porky",  emoji:"🐖", name:"Porky",  color:"#ff9ec4", blurb:"digs up bargains"},
+  {id:"woolly", emoji:"🐑", name:"Woolly", color:"#c9f07f", blurb:"soft on the outside"},
+  {id:"turbo",  emoji:"🚜", name:"Turbo",  color:"#ffd166", blurb:"all gas, no brakes"},
+  {id:"hoot",   emoji:"🦉", name:"Hoot",   color:"#b892ff", blurb:"farms after dark"},
+];
+
+function makePlayer(av, cpu, idx){
+  return {
+    idx, id:av.id, name:av.name, emoji:av.emoji, color:av.color, cpu:!!cpu,
+    coins:150, pos:0, abs:0, lastLapAbs:-1, alive:true, skip:0, lap:0, finished:false, finalDone:false,
+    animals:[], bonusRolls:0, luckyNext:0, scareDays:0, irrigDays:0,
+    stats:{planted:0, harvested:0, earned:0, scrumped:0, steps:0},
+  };
+}
+
+/* farm score used for ranking + tycoon check */
+function animalIncome(p){
+  return p.animals.reduce((s, k) => s + ANIMALS[k].income, 0);
+}
+function fieldValue(board, p, wxMult){
+  let v = 0;
+  for (const t of board){
+    if (t.crop && t.crop.owner === p.idx){
+      v += Math.round(harvestValue(t, wxMult) * (isRipe(t) ? 1 : cropProgress(t) * 0.6));
+    }
+  }
+  return v;
+}
+function herdValue(p){
+  return p.animals.reduce((s, k) => s + Math.round(ANIMALS[k].cost * 0.6), 0);
+}
+function netWorth(board, p, wxMult){
+  return p.coins + fieldValue(board, p, wxMult) + herdValue(p);
+}
+
+/* ---- movement ------------------------------------------------------------ */
+/* The track is a closed serpentine: the barn (tile 49) hands you back to the
+   gate (tile 1) along the return lane, so you farm the same fields again and
+   again. Returns the tiles to hop through, excluding the start. */
+function stepForward(i){ return (i + 1) % NTILES; }
+function stepBack(i){ return (i - 1 + NTILES) % NTILES; }
+function walkPath(from, steps){
+  const path = [];
+  let at = from;
+  for (let s = 0; s < steps; s++){ at = stepForward(at); path.push(at); }
+  return path;
+}
+function walkBack(from, steps){
+  const path = [];
+  let at = from;
+  for (let s = 0; s < steps; s++){ at = stepBack(at); path.push(at); }
+  return path;
+}
+
+/* ---- farm cards ---------------------------------------------------------- */
+const CARDS = [
+  {id:"bumper",  e:"🌟", t:"Bumper Crop",     d:"Every crop you own ripens on the spot.",       kind:"good"},
+  {id:"crows",   e:"🐦‍⬛", t:"Crow Attack",   d:"A murder of crows strips one of your crops bare.", kind:"bad"},
+  {id:"ribbon",  e:"🎀", t:"Prize Ribbon",    d:"Best marrow in the county. +130 coins.",       kind:"good"},
+  {id:"scare",   e:"🧟", t:"Scarecrow",       d:"Storms can't touch your crops for 3 days.",    kind:"good"},
+  {id:"hitch",   e:"🛻", t:"Hitch a Ride",    d:"A neighbour drops you 4 tiles up the track.",  kind:"good"},
+  {id:"mud",     e:"🥾", t:"Muddy Boots",     d:"Stuck fast. You lose your next turn.",         kind:"bad"},
+  {id:"raising", e:"🔨", t:"Barn Raising",    d:"The village helps out: +1 day to all your crops.", kind:"good"},
+  {id:"piglet",  e:"🐖", t:"Surprise Piglet", d:"A free pig joins your farm. It pays every dawn.", kind:"good"},
+  {id:"mkt",     e:"🛒", t:"Farmers' Market", d:"Sell all your ripe crops right now, at +25%.",  kind:"good"},
+  {id:"irrig",   e:"🚿", t:"Irrigation",      d:"Your crops get double growth for the next 2 days.", kind:"good"},
+  {id:"tax",     e:"🧾", t:"Tractor Tax",     d:"The county sends a bill. −80 coins.",          kind:"bad"},
+  {id:"shoe",    e:"🧲", t:"Lucky Horseshoe", d:"Your next roll is a guaranteed 6.",            kind:"good"},
+  {id:"swarm",   e:"🐹", t:"Gopher Swarm",    d:"Tunnels everywhere — back 4 tiles.",           kind:"bad"},
+  {id:"egg",     e:"🥇", t:"Golden Egg",      d:"You find it under the porch. +220 coins.",     kind:"good"},
+  {id:"bees",    e:"🐝", t:"Pollination",     d:"Bees visit: +2 days to every crop you own.",   kind:"good"},
+  {id:"hail",    e:"🧊", t:"Hailstones",      d:"Ice flattens your youngest crop. −40 coins.",  kind:"bad"},
+];
+
+function makeDeck(rnd){ return shuffle(CARDS.map(c => c.id), rnd); }
+
+/* ---- game modes ---------------------------------------------------------- */
+const MODES = {
+  festival:{id:"festival", e:"\ud83c\udf3e", name:"Barn Runs", laps:true,
+           blurb:"You choose how many runs to the barn it takes. The first farmer to finish them all calls the Final Day \u2014 then the richest farm wins."},
+  quick:  {id:"quick",  e:"\u23f1\ufe0f", name:"Quick Season", days:10,
+           blurb:"Ten days, no more. Plant fast, milk everything, and be the richest farm when the sun sets on day 10."},
+  tycoon: {id:"tycoon", e:"\ud83e\ude99", name:"Harvest Tycoon", target:1400,
+           blurb:"No clock at all. Lap the farm as long as you like \u2014 the first farmer to bank 1,400 coins takes the season."},
+};
+/*__LOGIC_END__*/
+
+/* ============================================================================
+   PART 2 — AUDIO. Everything is synthesised; there are no sound files.
+   ========================================================================== */
+const SFX = (function(){
+  /* localStorage throws on some file:// origins — never let it break the game */
+  const store = {
+    get(k, d){ try { const v = localStorage.getItem(k); return v == null ? d : v; } catch(e){ return d; } },
+    set(k, v){ try { localStorage.setItem(k, v); } catch(e){} },
+  };
+  let ctx = null, master = null, musicGain = null, ambGain = null;
+  let muted = store.get("bs_mute", "0") === "1";
+  let musicOn = store.get("bs_music", "1") !== "0";
+  let rainNode = null, windNode = null, musicTimer = null, ambTimer = null;
+
+  function boot(){
+    if (ctx) return ctx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.85;
+    master.connect(ctx.destination);
+    musicGain = ctx.createGain(); musicGain.gain.value = musicOn ? 0.17 : 0;
+    musicGain.connect(master);
+    ambGain = ctx.createGain(); ambGain.gain.value = 0.3; ambGain.connect(master);
+    return ctx;
+  }
+  function now(){ return ctx.currentTime; }
+  function ok(){ if (!boot()) return false; if (ctx.state === "suspended") ctx.resume(); return !muted; }
+
+  /* ---- primitives ---- */
+  function tone(o){
+    if (!ok()) return;
+    const t0 = now() + (o.delay || 0);
+    const osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = o.type || "sine";
+    osc.frequency.setValueAtTime(o.f, t0);
+    if (o.f2) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.f2), t0 + (o.dur || .2));
+    let node = osc;
+    if (o.filter){
+      const bq = ctx.createBiquadFilter();
+      bq.type = o.filter; bq.frequency.value = o.fc || 900; bq.Q.value = o.q || 1;
+      osc.connect(bq); node = bq;
+    }
+    if (o.vibrato){
+      const lfo = ctx.createOscillator(), lg = ctx.createGain();
+      lfo.frequency.value = o.vibrato; lg.gain.value = o.vdepth || 14;
+      lfo.connect(lg); lg.connect(osc.frequency); lfo.start(t0); lfo.stop(t0 + (o.dur || .2) + .05);
+    }
+    const v = (o.vol == null ? .3 : o.vol);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(v, t0 + (o.atk || .012));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (o.dur || .2));
+    node.connect(g); g.connect(o.bus || master);
+    osc.start(t0); osc.stop(t0 + (o.dur || .2) + .05);
+  }
+  function noise(o){
+    if (!ok()) return;
+    const t0 = now() + (o.delay || 0), dur = o.dur || .2;
+    const buf = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * dur)), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const src = ctx.createBufferSource(); src.buffer = buf;
+    const bq = ctx.createBiquadFilter();
+    bq.type = o.filter || "bandpass"; bq.frequency.value = o.fc || 900; bq.Q.value = o.q || 1;
+    if (o.fc2) bq.frequency.exponentialRampToValueAtTime(o.fc2, t0 + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(o.vol == null ? .25 : o.vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bq); bq.connect(g); g.connect(o.bus || master);
+    src.start(t0); src.stop(t0 + dur + .02);
+  }
+  /* a plucked "banjo/marimba" note for music + chimes */
+  function pluck(f, t0, dur, vol, bus){
+    if (!ctx) return;
+    const osc = ctx.createOscillator(), osc2 = ctx.createOscillator();
+    const g = ctx.createGain(), bq = ctx.createBiquadFilter();
+    osc.type = "triangle"; osc2.type = "sine";
+    osc.frequency.value = f; osc2.frequency.value = f * 2.01;
+    bq.type = "lowpass"; bq.frequency.setValueAtTime(f * 7, t0);
+    bq.frequency.exponentialRampToValueAtTime(f * 1.6, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + .008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(bq); osc2.connect(bq); bq.connect(g); g.connect(bus || master);
+    osc.start(t0); osc.stop(t0 + dur); osc2.start(t0); osc2.stop(t0 + dur);
+  }
+
+  /* ---- animal voices ---- */
+  const voices = {
+    cluck(){ const b = .95 + Math.random()*.2;
+      for (let i = 0; i < 3; i++)
+        tone({type:"sawtooth", f:(820 - i*40)*b, f2:430*b, dur:.1, vol:.3, delay:i*.11, filter:"bandpass", fc:1500, q:4}); },
+    moo(){ const b = .93 + Math.random()*.16;
+      tone({type:"sawtooth", f:150*b, f2:96*b, dur:.9, vol:.38, filter:"lowpass", fc:640, vibrato:5.5, vdepth:9, atk:.09});
+      tone({type:"sine", f:75*b, f2:52*b, dur:.9, vol:.16, atk:.1}); },
+    oink(){ const b = .92 + Math.random()*.2;
+      for (let i = 0; i < 3; i++)
+        tone({type:"square", f:300*b, f2:150*b, dur:.14, vol:.26, delay:i*.17, filter:"bandpass", fc:900, q:3}); },
+    baa(){ const b = .94 + Math.random()*.15;
+      tone({type:"sawtooth", f:430*b, f2:355*b, dur:.66, vol:.28, filter:"bandpass", fc:1200, q:2.4,
+            vibrato:15, vdepth:40, atk:.05}); },
+    crow(){ [0,.2,.42,.78].forEach((d,i) =>
+        tone({type:"sawtooth", f:[700,880,780,560][i], f2:[880,780,700,380][i], dur:[.2,.22,.3,.55][i],
+              vol:.34, delay:d, filter:"bandpass", fc:1700, q:3})); },
+    quack(){ const b = .9 + Math.random()*.25;
+      for (let i = 0; i < 2; i++)
+        tone({type:"sawtooth", f:520*b, f2:370*b, dur:.17, vol:.24, delay:i*.19, filter:"bandpass", fc:1100, q:5}); },
+    neigh(){ tone({type:"sawtooth", f:640, f2:300, dur:.75, vol:.26, filter:"bandpass", fc:1500, q:2,
+            vibrato:24, vdepth:70, atk:.04});
+      noise({filter:"bandpass", fc:1800, q:1.4, dur:.4, vol:.1, delay:.4}); },
+    goat(){ tone({type:"square", f:520, f2:470, dur:.5, vol:.2, filter:"bandpass", fc:1300, q:3,
+            vibrato:26, vdepth:52, atk:.03}); },
+    dog(){ [0,.26].forEach(d => {
+      tone({type:"sawtooth", f:340, f2:180, dur:.14, vol:.26, delay:d, filter:"bandpass", fc:1000, q:2.2});
+      noise({filter:"bandpass", fc:900, q:1.2, dur:.12, vol:.14, delay:d}); }); },
+    turkey(){ for (let i = 0; i < 5; i++)
+      tone({type:"square", f:600 + (i%2)*260, dur:.06, vol:.17, delay:i*.075, filter:"bandpass", fc:1600, q:5}); },
+    bird(){ const b = 1400 + Math.random()*900;
+      tone({type:"sine", f:b, f2:b*1.5, dur:.11, vol:.17});
+      tone({type:"sine", f:b*1.4, f2:b, dur:.13, vol:.13, delay:.13}); },
+    cricket(){ for (let i = 0; i < 4; i++)
+      noise({filter:"bandpass", fc:4600, q:22, dur:.035, vol:.1, delay:i*.06}); },
+    bee(){ tone({type:"sawtooth", f:190, f2:215, dur:.75, vol:.13, filter:"bandpass", fc:420, q:7,
+          vibrato:22, vdepth:28}); },
+  };
+  const BARNYARD = ["cluck","moo","oink","baa","quack","neigh","goat","dog","turkey","crow"];
+
+  /* ---- the effect library ---- */
+  const lib = {
+    click(){ noise({filter:"highpass", fc:2300, dur:.045, vol:.14}); },
+    hover(){ tone({type:"sine", f:1180, dur:.045, vol:.05}); },
+    diceRattle(){ for (let i = 0; i < 7; i++)
+        noise({filter:"bandpass", fc:1500 + Math.random()*1900, q:2.4, dur:.05, vol:.12, delay:i*.055}); },
+    diceLand(){ noise({filter:"lowpass", fc:420, dur:.17, vol:.28});
+      tone({type:"sine", f:170, f2:70, dur:.18, vol:.2}); },
+    hop(i){ tone({type:"sine", f:420 + (i % 5)*55, f2:700, dur:.09, vol:.13});
+      noise({filter:"lowpass", fc:700, dur:.07, vol:.1, delay:.07}); },
+    land(){ noise({filter:"lowpass", fc:330, dur:.13, vol:.2}); tone({type:"sine", f:130, f2:70, dur:.14, vol:.15}); },
+    plant(){ noise({filter:"lowpass", fc:520, dur:.16, vol:.2});
+      tone({type:"triangle", f:260, f2:520, dur:.2, vol:.14, delay:.05}); },
+    grow(){ [0,.09,.18].forEach((d,i) => tone({type:"sine", f:[660,880,1100][i], dur:.16, vol:.11, delay:d})); },
+    water(){ for (let i = 0; i < 5; i++)
+        tone({type:"sine", f:600 + Math.random()*900, f2:300, dur:.13, vol:.09, delay:i*.05});
+      noise({filter:"bandpass", fc:2600, q:1.6, dur:.3, vol:.1}); },
+    harvest(){ [0,.07,.14,.22].forEach((d,i) => pluck([523,659,784,1047][i], now() + d, .5, .18));
+      noise({filter:"bandpass", fc:3000, q:1.2, dur:.25, vol:.07, delay:.05}); },
+    coin(n){ const k = Math.min(n || 1, 7);
+      for (let i = 0; i < k; i++){ tone({type:"square", f:1150 + i*115, dur:.07, vol:.09, delay:i*.055});
+        tone({type:"sine", f:1700 + i*160, dur:.1, vol:.06, delay:i*.055 + .02}); } },
+    cash(){ [0,.05,.1].forEach((d,i) => tone({type:"square", f:[880,1174,1568][i], dur:.14, vol:.12, delay:d}));
+      noise({filter:"highpass", fc:5200, dur:.2, vol:.08, delay:.1}); },
+    spend(){ tone({type:"triangle", f:420, f2:190, dur:.22, vol:.15}); },
+    bad(){ tone({type:"sawtooth", f:280, f2:110, dur:.4, vol:.18, filter:"lowpass", fc:760}); },
+    tractor(){ if (!ok()) return;
+      tone({type:"sawtooth", f:76, f2:66, dur:1.1, vol:.16, filter:"lowpass", fc:340, vibrato:9, vdepth:11});
+      tone({type:"square", f:150, f2:132, dur:1.1, vol:.06, filter:"lowpass", fc:400});
+      lib.horn(); },
+    horn(){ tone({type:"square", f:420, dur:.16, vol:.13, delay:.05, filter:"lowpass", fc:1200});
+      tone({type:"square", f:330, dur:.24, vol:.13, delay:.24, filter:"lowpass", fc:1200}); },
+    gopher(){ [0,.13].forEach((d,i) => tone({type:"square", f:1300 - i*200, f2:1900, dur:.1, vol:.12,
+      delay:d, filter:"bandpass", fc:2400, q:6}));
+      noise({filter:"lowpass", fc:400, dur:.3, vol:.16, delay:.1}); },
+    twister(){ if (!ok()) return;
+      noise({filter:"bandpass", fc:500, fc2:2800, q:1.4, dur:1.1, vol:.2});
+      tone({type:"sawtooth", f:180, f2:900, dur:1.1, vol:.09, filter:"lowpass", fc:1400}); },
+    bridge(){ [0,.1,.2,.3].forEach((d,i) => tone({type:"triangle", f:[392,523,659,784][i], dur:.2, vol:.12, delay:d}));
+      noise({filter:"bandpass", fc:900, q:2, dur:.4, vol:.07}); },
+    bell(){ [0,.02].forEach(d => tone({type:"sine", f:1568, dur:.85, vol:.13, delay:d}));
+      tone({type:"sine", f:2093, dur:.6, vol:.07, delay:.03}); },
+    card(){ noise({filter:"bandpass", fc:2800, q:1.1, dur:.16, vol:.16});
+      tone({type:"triangle", f:700, f2:1300, dur:.16, vol:.09, delay:.05}); },
+    scrump(){ [0,.08,.16].forEach((d,i) => tone({type:"triangle", f:[880,740,988][i], dur:.12, vol:.11, delay:d}));
+      noise({filter:"highpass", fc:4000, dur:.2, vol:.06, delay:.16}); },
+    thunder(){ if (!ok()) return;
+      noise({filter:"lowpass", fc:260, dur:1.9, vol:.36});
+      noise({filter:"lowpass", fc:90, dur:2.4, vol:.28, delay:.12});
+      tone({type:"sine", f:58, f2:30, dur:1.7, vol:.22, delay:.05}); },
+    wind(){ noise({filter:"bandpass", fc:520, q:.7, dur:2.6, vol:.13}); },
+    dayBreak(){ [0,.11,.22,.33].forEach((d,i) => pluck([392,523,659,784][i], now() + d, .8, .13)); },
+    fanfare(){ if (!ok()) return;
+      const seq = [[523,0],[659,.13],[784,.26],[1047,.4],[784,.62],[1047,.74],[1319,.9]];
+      seq.forEach(([f,d]) => { pluck(f, now() + d, .7, .2);
+        tone({type:"triangle", f:f/2, dur:.4, vol:.07, delay:d}); });
+      setTimeout(() => voices.crow(), 1250); },
+    lose(){ tone({type:"sawtooth", f:330, f2:80, dur:1.1, vol:.2, filter:"lowpass", fc:700, vibrato:6, vdepth:22}); },
+  };
+
+  /* ---- looping rain / wind beds ---- */
+  function startRain(heavy){
+    if (!boot()) return;
+    stopRain();
+    const dur = 2.2;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+    const bq = ctx.createBiquadFilter(); bq.type = "bandpass";
+    bq.frequency.value = heavy ? 1500 : 2300; bq.Q.value = .55;
+    const g = ctx.createGain(); g.gain.value = 0;
+    g.gain.linearRampToValueAtTime(heavy ? .17 : .1, now() + 1.6);
+    src.connect(bq); bq.connect(g); g.connect(ambGain);
+    src.start(); rainNode = {src, g};
+  }
+  function stopRain(){
+    if (!rainNode) return;
+    const r = rainNode; rainNode = null;
+    try { r.g.gain.linearRampToValueAtTime(0.0001, now() + 1); setTimeout(() => r.src.stop(), 1200); } catch(e){}
+  }
+
+  /* ---- gentle procedural farm music: pentatonic banjo loop ---- */
+  const SCALE = [0, 2, 4, 7, 9, 12, 14, 16];
+  const ROOT = 196;                    /* G3 */
+  const PROG = [0, 0, 5, 5, 3, 3, 4, 4];
+  let bar = 0;
+  function musicTick(){
+    if (!ctx || !musicOn || muted) return;
+    const t0 = now() + .05, beat = .38;
+    const deg = PROG[bar % PROG.length];
+    for (let i = 0; i < 4; i++){
+      const n = SCALE[(deg + i * 2) % SCALE.length] + (i === 3 ? 12 : 0);
+      pluck(ROOT * Math.pow(2, n / 12), t0 + i * beat, .75, .12, musicGain);
+      if (i % 2 === 0) pluck(ROOT / 2 * Math.pow(2, SCALE[deg % SCALE.length] / 12), t0 + i * beat, 1, .1, musicGain);
+    }
+    if (bar % 2 === 1) noise({filter:"highpass", fc:6000, dur:.05, vol:.04, delay:beat*2, bus:musicGain});
+    bar++;
+  }
+  function startMusic(){
+    if (!boot() || musicTimer) return;
+    musicTick(); musicTimer = setInterval(musicTick, 4 * 380);
+  }
+  /* the game can point the ambience at whatever livestock is actually on the
+     board, so what you hear matches what you can see */
+  let herdVoice = null;
+  function startAmbience(){
+    if (ambTimer) return;
+    ambTimer = setInterval(() => {
+      if (muted || !ctx) return;
+      const owned = herdVoice && herdVoice();
+      if (owned && Math.random() < .72){ try { voices[owned](); } catch(e){} return; }
+      const r = Math.random();
+      if (r < .30) voices[BARNYARD[Math.floor(Math.random() * BARNYARD.length)]]();
+      else if (r < .52) voices.bird();
+      else if (r < .64) voices.cricket();
+      else if (r < .72) voices.bee();
+      else if (r < .80) lib.wind();
+      /* the rest of the time, a beat of quiet */
+    }, 2600);
+  }
+
+  return {
+    play(name, arg){ const f = lib[name] || voices[name]; if (f){ try { f(arg); } catch(e){} } },
+    voice(name){ if (voices[name]){ if (!ok()) return; try { voices[name](); } catch(e){} } },
+    boot(){ boot(); startMusic(); startAmbience(); },
+    /* fn() should return a voice name for an animal currently on the board, or null */
+    watchHerd(fn){ herdVoice = fn; },
+    /* a whole barnyard answering at once */
+    chorus(list, gap){
+      (list && list.length ? list : BARNYARD).forEach((v, i) =>
+        setTimeout(() => { if (voices[v]) try { voices[v](); } catch(e){} }, i * (gap || 190)));
+    },
+    rain(heavy){ startRain(heavy); }, rainOff(){ stopRain(); },
+    get muted(){ return muted; },
+    toggleMute(){
+      muted = !muted; store.set("bs_mute", muted ? "1" : "0");
+      if (master) master.gain.value = muted ? 0 : .85;
+      return muted;
+    },
+    get music(){ return musicOn; },
+    toggleMusic(){
+      musicOn = !musicOn; store.set("bs_music", musicOn ? "1" : "0");
+      if (musicGain) musicGain.gain.value = musicOn ? .17 : 0;
+      if (musicOn) startMusic();
+      return musicOn;
+    },
+  };
+})();
+
+/* ============================================================================
+   PART 3 — VIEW: the 3D table, camera, tiles, pawns, HUD
+   ========================================================================== */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const el = (tag, cls, html) => { const n = document.createElement(tag); if (cls) n.className = cls;
+  if (html != null) n.innerHTML = html; return n; };
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const ease = t => t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3)/2;
+const root = document.documentElement;
+
+const DOM = {
+  stage:$("#stage"), board:$("#board"), tiles:$("#tiles"), pawns:$("#pawns"), props:$("#props"),
+  bfx:$("#bfx"), road:$("#road"), decor:$("#decor"), flyers:$("#flyers"),
+  yard:$("#yard"), yardProps:$("#yardProps"), spotlight:$("#spotlight"),
+  rail:$("#rail"), log:$("#log"), insp:$("#insp"),
+  hint:$("#hint"), actions:$("#actions"), toasts:$("#toasts"), conf:$("#confetti"),
+  dieScene:$("#dieScene"), dieCube:$("#dieCube"), dieHint:$("#dieHint"),
+  sky:$("#sky"), rainLayer:$("#rainLayer"), heat:$("#heat"), flash:$("#flash"),
+  wxIcon:$("#wxIcon"), wxName:$("#wxName"), wxNote:$("#wxNote"), wxNext:$("#wxNext"), dayTag:$("#dayTag"),
+  goal:$("#goal"), setup:$("#setup"), roster:$("#roster"), modes:$("#modes"), setupNote:$("#setupNote"),
+  lapPick:$("#lapPick"), lapSegs:$("#lapSegs"), lapNote:$("#lapNote"),
+  modal:$("#modal"), mTitle:$("#mTitle"), mSub:$("#mSub"), mBody:$("#mBody"), mFoot:$("#mFoot"),
+  help:$("#help"), legend:$("#legend"), win:$("#win"), winCrown:$("#winCrown"),
+  winName:$("#winName"), winSub:$("#winSub"), scores:$("#scores"),
+};
+
+/* ---- global state -------------------------------------------------------- */
+const S = {
+  board:[], players:[], cur:0, day:1, wx:"sun", wxNext:"rain", deck:[], rnd:Math.random,
+  mode:"festival", lapGoal:2, seed:1, gen:0, over:false, finalDay:false,
+  busy:false, waiting:null, die:1, dieRx:-22, dieRy:34, inspected:null,
+};
+const CAM = {tilt:56, yaw:0, zoom:1, px:0, py:0, drag:null};
+let CELL = 84;      /* px per tile — the single source of truth */
+
+/* ============ camera ============ */
+function applyCam(snap){
+  DOM.board.classList.toggle("nosnap", !snap);
+  root.style.setProperty("--tilt", CAM.tilt + "deg");
+  root.style.setProperty("--ntilt", (-CAM.tilt) + "deg");
+  root.style.setProperty("--yaw", CAM.yaw + "deg");
+  root.style.setProperty("--nyaw", (-CAM.yaw) + "deg");
+  root.style.setProperty("--zoom", CAM.zoom.toFixed(3));
+  /* flat text on a plane tilted by T reads correctly when pre-stretched by 1/cos T */
+  root.style.setProperty("--stretch", (1 / Math.cos(CAM.tilt * Math.PI / 180)).toFixed(3));
+  root.style.setProperty("--px", CAM.px.toFixed(1) + "px");
+  root.style.setProperty("--py", CAM.py.toFixed(1) + "px");
+}
+function fit(){
+  const w = innerWidth, h = innerHeight;
+  const side = w > 980 ? 440 : 30;
+  const avail = Math.max(240, w - side);
+  const vert = Math.max(220, h - 190);
+  /* tilting by T compresses the board's depth to cos(T); add room for standees */
+  const cell = clamp(Math.min(avail / 7.4, vert / (7 * Math.cos(CAM.tilt * Math.PI / 180) + 2.1)), 42, 104);
+  CELL = cell;
+  root.style.setProperty("--cell", cell.toFixed(2) + "px");
+  root.style.setProperty("--h", Math.max(9, cell * .19).toFixed(1) + "px");
+  drawRoad();
+  layoutYard();
+  layoutDecor();
+  layoutFlyers();
+  layoutPawns(true);
+  layoutProps();
+}
+function cell(){ return CELL; }
+function tileCenter(i){
+  const c = CELL, {row, col} = coordsOf(i);
+  return {x: col * c + c / 2, y: (6 - row) * c + c / 2};
+}
+/* how far "into the scene" a tile sits — used for stacking order */
+function depthOf(i){ return (6 - coordsOf(i).row) / 6; }
+
+function resetCam(){
+  CAM.tilt = 56; CAM.yaw = 0; CAM.zoom = 1; CAM.px = 0; CAM.py = 0;
+  applyCam(true); fit();
+}
+/* The whole board is always on screen, so the camera holds still: it moves
+   only when the player drags, zooms or resets it. Nothing in the game loop
+   is allowed to shift the board underneath you. */
+(function camControls(){
+  const st = DOM.stage;
+  st.addEventListener("pointerdown", e => {
+    if (e.target.closest(".tile")) { /* still allow orbit from tiles after a small move */ }
+    CAM.drag = {x:e.clientX, y:e.clientY, yaw:CAM.yaw, tilt:CAM.tilt, moved:0};
+    st.setPointerCapture?.(e.pointerId);
+  });
+  st.addEventListener("pointermove", e => {
+    if (!CAM.drag) return;
+    const dx = e.clientX - CAM.drag.x, dy = e.clientY - CAM.drag.y;
+    CAM.drag.moved = Math.abs(dx) + Math.abs(dy);
+    if (CAM.drag.moved < 6) return;
+    CAM.yaw = clamp(CAM.drag.yaw + dx * .26, -42, 42);
+    CAM.tilt = clamp(CAM.drag.tilt + dy * .16, 22, 74);
+    applyCam(false);
+  });
+  const end = () => { if (CAM.drag && CAM.drag.moved >= 6) fit(); CAM.drag = null; };
+  st.addEventListener("pointerup", end); st.addEventListener("pointercancel", end);
+  st.addEventListener("wheel", e => {
+    e.preventDefault();
+    CAM.zoom = clamp(CAM.zoom * (e.deltaY > 0 ? .92 : 1.08), .62, 1.9);
+    applyCam(false);
+  }, {passive:false});
+})();
+
+/* ============ the road ============ */
+function drawRoad(){
+  const c = CELL, size = c * 7, M = c * .58, tot = size + M * 2;
+  const svg = DOM.road;
+  svg.style.left = (-M) + "px"; svg.style.top = (-M) + "px";
+  svg.setAttribute("width", tot); svg.setAttribute("height", tot);
+  svg.setAttribute("viewBox", (-M) + " " + (-M) + " " + tot + " " + tot);
+  const pts = [];
+  for (let i = 0; i < NTILES; i++){ const p = tileCenter(i); pts.push(p.x + "," + p.y); }
+  const d = "M" + pts.join(" L");
+  let links = "";
+  for (const from in BRIDGES){
+    const a = tileCenter(+from), b = tileCenter(BRIDGES[from]);
+    const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const nx = -(b.y - a.y), ny = (b.x - a.x), len = Math.hypot(nx, ny) || 1;
+    const bow = c * .55;
+    links += '<path class="link" d="M' + a.x + ',' + a.y + ' Q' + (mx + nx/len*bow) + ',' +
+             (my + ny/len*bow) + ' ' + b.x + ',' + b.y + '"/>';
+  }
+  /* the return lane: barn (top-right) back round the outside to the farmyard */
+  const A = tileCenter(LAST), B = tileCenter(0);
+  const ox = -M * .66, oy = -M * .66, r = M * .62;
+  const ret = "M" + A.x + "," + A.y +
+    " L" + A.x + "," + (oy + r) + " Q" + A.x + "," + oy + " " + (A.x - r) + "," + oy +
+    " L" + (ox + r) + "," + oy + " Q" + ox + "," + oy + " " + ox + "," + (oy + r) +
+    " L" + ox + "," + (B.y - r) + " Q" + ox + "," + B.y + " " + (ox + r) + "," + B.y +
+    " L" + B.x + "," + B.y;
+  svg.innerHTML =
+    '<path class="rd" d="' + ret + '" stroke-width="' + (c * .3) + '" stroke="rgba(0,0,0,.2)" transform="translate(3,5)"/>' +
+    '<path class="rd lane" d="' + ret + '" stroke-width="' + (c * .28) + '"/>' +
+    '<path class="dash arrow" d="' + ret + '"/>' +
+    '<path class="rd" d="' + d + '" stroke-width="' + (c * .46) + '" stroke="rgba(0,0,0,.22)" transform="translate(3,5)"/>' +
+    '<path class="rd" d="' + d + '" stroke-width="' + (c * .44) + '"/>' +
+    '<path class="rdi" d="' + d + '" stroke-width="' + (c * .3) + '"/>' +
+    '<path class="dash" d="' + d + '"/>' + links;
+}
+
+/* ============ tiles ============ */
+function buildBoard(){
+  DOM.tiles.innerHTML = "";
+  S.board.forEach(t => {
+    const n = el("div", "tile");
+    n.dataset.i = t.i;
+    n.style.setProperty("--c", t.col);
+    n.style.setProperty("--r", t.row);
+    const K = KINDS[t.kind];
+    n.style.setProperty("--topbg", K.top);
+    n.innerHTML =
+      '<div class="slab">' +
+        '<div class="f top"><div class="soil" style="--furrow:' + (t.row % 2 ? 90 : 0) + 'deg"></div>' +
+          '<span class="num">' + (t.i + 1) + '</span>' +
+          '<span class="rich"></span>' +
+          '<span class="tname"></span>' +
+          '<span class="ring"></span>' +
+        '</div>' +
+        '<div class="f n"></div><div class="f s"></div><div class="f e"></div><div class="f w"></div>' +
+      '</div>' +
+      '<div class="up"><div class="bb"></div></div>';
+    n.addEventListener("pointerenter", () => inspect(t.i));
+    n.addEventListener("click", () => { inspect(t.i); SFX.play("hover"); });
+    DOM.tiles.appendChild(n);
+    t.node = n;
+    t.bbNode = n.querySelector(".bb");
+    t.ringNode = n.querySelector(".ring");
+    t.nameNode = n.querySelector(".tname");
+    t.richNode = n.querySelector(".rich");
+    renderTile(t.i);
+  });
+}
+
+function renderTile(i, popped){
+  const t = S.board[i], K = KINDS[t.kind];
+  if (!t.node) return;
+  t.richNode.textContent = t.kind === "plot" ? (t.soil === "rich" ? "✨" : t.soil === "rocky" ? "🪨" : "") : "";
+  let owner = null, glyph = "", cls = "bb", tag = "", bar = "";
+
+  if (t.animal){
+    owner = S.players[t.animal.owner];
+    const A = ANIMALS[t.animal.key];
+    glyph = A.emoji; cls += " idle";
+    tag = '<span class="tag" style="color:' + owner.color + '">+' + A.income + '/day</span>';
+  } else if (t.crop){
+    owner = S.players[t.crop.owner];
+    const C = CROPS[t.crop.key], pr = cropProgress(t);
+    const ripe = pr >= 1;
+    glyph = ripe ? C.emoji : (pr < .45 ? "🌱" : "🌿");
+    cls += ripe ? " ripe" : " sway";
+    if (popped) cls += " pop";
+    tag = '<span class="tag" style="color:' + owner.color + '">' +
+          (ripe ? "ripe!" : t.crop.grown + "/" + t.crop.need + "d") + '</span>';
+    bar = '<span class="growbar"><i style="width:' + Math.round(pr * 100) + '%"></i></span>';
+  } else if (t.kind !== "plot"){
+    glyph = K.emoji;
+    cls += (t.kind === "barn" || t.kind === "gate") ? " idle barnBig" : " idle";
+    if (popped) cls += " pop";
+  }
+
+  t.bbNode.className = cls;
+  t.bbNode.innerHTML = glyph
+    ? '<span class="glyph' + (t.crop && cropProgress(t) < 1 ? " sm" : "") +
+      '" style="animation-delay:' + ((i * 137 % 23) / 10).toFixed(1) + 's">' + glyph + '</span>' + tag + bar
+    : "";
+  t.ringNode.style.setProperty("--oc", owner ? owner.color : "transparent");
+  t.nameNode.textContent = t.kind === "plot"
+    ? (t.crop ? CROPS[t.crop.key].name : t.animal ? ANIMALS[t.animal.key].name : "")
+    : K.name;
+}
+function renderAllTiles(){ for (let i = 0; i < NTILES; i++) renderTile(i); }
+
+/* ============ props: the shared pasture in front of the board ============ */
+/* ---- the farmyard: home base, just outside the starting tile ------------
+   A patch of packed earth at the front-left corner with the working clutter
+   of a farm standing on it. The start tile itself carries the farmhouse. */
+const YARD = {x0:-1.85, x1:2.35, y0:6.98, y1:8.75};   /* in tile widths */
+const YARD_PROPS = [
+  {g:"🚜", x:-1.35, y:7.45, s:0.72},
+  {g:"🐓", x:-0.55, y:7.28, s:0.40, sfx:"crow"},
+  {g:"🐕", x: 0.35, y:7.26, s:0.42, sfx:"dog"},
+  {g:"🌾", x: 1.15, y:7.34, s:0.46},
+  {g:"🪵", x: 1.95, y:7.52, s:0.40},
+  {g:"🧺", x:-1.70, y:8.10, s:0.36},
+  {g:"🪣", x:-0.85, y:8.25, s:0.34},
+  {g:"🐈", x: 0.05, y:8.18, s:0.36},
+  {g:"🐤", x: 0.78, y:8.30, s:0.28, sfx:"cluck"},
+  {g:"🧑‍🌾", x: 1.62, y:8.12, s:0.50},
+];
+function inYard(x, y){
+  const c = CELL;
+  return x > YARD.x0 * c && x < YARD.x1 * c && y > YARD.y0 * c && y < YARD.y1 * c;
+}
+function layoutYard(){
+  if (!DOM.yard) return;
+  const c = CELL;
+  DOM.yard.style.left   = (YARD.x0 * c).toFixed(1) + "px";
+  DOM.yard.style.top    = (YARD.y0 * c).toFixed(1) + "px";
+  DOM.yard.style.width  = ((YARD.x1 - YARD.x0) * c).toFixed(1) + "px";
+  DOM.yard.style.height = ((YARD.y1 - YARD.y0) * c).toFixed(1) + "px";
+
+  DOM.yardProps.innerHTML = "";
+  /* smoke curling from the farmhouse chimney on the starting tile */
+  const home = tileCenter(0);
+  const chimney = el("div", "up chimney");   /* rises from the farmhouse, so it sits on tile 1 */
+  chimney.style.left = (home.x + c * .17).toFixed(1) + "px";
+  chimney.style.top  = home.y.toFixed(1) + "px";
+  chimney.style.zIndex = Math.round(home.y);
+  chimney.innerHTML = '<div class="bb"><div class="smoke" style="margin-bottom:' +
+    (c * .5).toFixed(0) + 'px">' +
+    [0, 1, 2, 3].map(k =>
+      '<i style="--sx:' + (10 + k * 6) + 'px;animation-delay:' + (k * 1.15).toFixed(2) + 's"></i>'
+    ).join("") + '</div></div>';
+  DOM.yardProps.appendChild(chimney);
+
+  YARD_PROPS.forEach((q, n) => {
+    const w = el("div", "up");
+    w.style.left = (q.x * c).toFixed(1) + "px";
+    w.style.top  = (q.y * c).toFixed(1) + "px";
+    w.style.zIndex = Math.round(q.y * c);
+    w.innerHTML = '<div class="bb idle"' + (q.sfx ? ' data-sfx="' + q.sfx + '"' : '') +
+      '><span class="glyph" style="font-size:' + (c * q.s).toFixed(1) +
+      'px;animation-delay:' + (n * .27).toFixed(2) + 's">' + q.g + '</span></div>';
+    DOM.yardProps.appendChild(w);
+  });
+}
+/* the yard wakes up when somebody comes home */
+function yardStir(){
+  if (!DOM.yardProps) return;
+  Array.from(DOM.yardProps.querySelectorAll(".bb")).forEach((bb, n) =>
+    setTimeout(() => hopStandee(bb), n * 85));
+}
+
+/* ---- scenery ring: props live on the grass around the board ------------- */
+const DECOR = ["🌳","🌲","🪨","🌾","🪵","🌻","🧺","🐇","🌳","🪣","🌲","🐏","🦆","🌿","🪿","🐝"];
+function layoutDecor(){
+  if (!DOM.decor) return;
+  const c = CELL, size = c * 7, M = c * .62;
+  DOM.decor.innerHTML = "";
+  const rnd = mulberry(20260927);
+  /* walk the margin band around the board and drop props along it */
+  DECOR.forEach((glyph, n) => {
+    const t = (n + .5) / DECOR.length, peri = t * 4;
+    let x, y;
+    if (peri < 1)      { x = -M + peri * (size + 2 * M);            y = -M; }
+    else if (peri < 2) { x = size + M;                              y = -M + (peri - 1) * (size + 2 * M); }
+    else if (peri < 3) { x = size + M - (peri - 2) * (size + 2 * M); y = size + M; }
+    else               { x = -M;                                    y = size + M - (peri - 3) * (size + 2 * M); }
+    x += (rnd() - .5) * c * .5;
+    y += (rnd() - .5) * c * .5;
+    if (inYard(x, y)) return;            /* the farmyard owns this corner */
+    const w = el("div", "up");
+    w.style.left = x.toFixed(1) + "px";
+    w.style.top  = y.toFixed(1) + "px";
+    w.style.zIndex = Math.round(y);
+    const VOICED = {"\ud83d\udc07":"bird", "\ud83e\udd86":"quack", "\ud83e\udebf":"turkey",
+                    "\ud83d\udc0f":"baa", "\ud83d\udc1d":"bee"};
+    w.innerHTML = '<div class="bb idle"' + (VOICED[glyph] ? ' data-sfx="' + VOICED[glyph] + '"' : '') +
+      '><span class="glyph" style="font-size:' + (c * (0.36 + rnd() * 0.22)).toFixed(1) +
+      'px;animation-delay:' + (rnd() * 3).toFixed(1) + 's">' + glyph + '</span></div>';
+    DOM.decor.appendChild(w);
+  });
+}
+
+function layoutProps(){
+  const c = cell();
+  DOM.props.innerHTML = "";
+  /* animals parked on a plot already show there — the pasture holds the overflow */
+  const herd = [];
+  S.players.forEach(p => {
+    const onBoard = {};
+    S.board.forEach(t => { if (t.animal && t.animal.owner === p.idx)
+      onBoard[t.animal.key] = (onBoard[t.animal.key] || 0) + 1; });
+    p.animals.forEach(k => {
+      if (onBoard[k] > 0){ onBoard[k]--; return; }
+      herd.push({k, p});
+    });
+  });
+  if (!herd.length) return;
+  const span = c * 4.2, step = herd.length > 1 ? span / (herd.length - 1) : 0;
+  herd.forEach((a, n) => {
+    const x = c * 2.7 + (herd.length > 1 ? n * step : span / 2);
+    const y = c * 7 + c * .55 + (n % 2) * c * .34;
+    const w = el("div", "up");
+    w.style.left = x + "px"; w.style.top = y + "px";
+    w.innerHTML = '<div class="bb idle" data-sfx="' + ANIMALS[a.k].sfx +
+      '"><span class="glyph sm" style="animation-delay:' + (n * .23).toFixed(2) + 's">' +
+      ANIMALS[a.k].emoji + '</span>' +
+      '<span class="tag" style="color:' + a.p.color + '">' + a.p.name + '</span></div>';
+    DOM.props.appendChild(w);
+  });
+}
+
+/* ============================================================================
+   THE LIVING FIELD — wind, wildlife, reactions
+   ========================================================================== */
+const FLYERS = [
+  {g:"\ud83e\udd8b", n:3, z:[40, 80],  t:[19, 27]},
+  {g:"\ud83d\udc1d", n:2, z:[26, 54],  t:[14, 19]},
+  {g:"\ud83d\udc26", n:2, z:[95, 150], t:[24, 33]},
+];
+function layoutFlyers(){
+  if (!DOM.flyers) return;
+  DOM.flyers.innerHTML = "";
+  const c = CELL, size = c * 7, rnd = mulberry(4242);
+  const spot = () => ((rnd() * 1.3 - 0.15) * size).toFixed(0) + "px";
+  FLYERS.forEach(kind => {
+    for (let k = 0; k < kind.n; k++){
+      const f = el("div", "flyer");
+      for (let i = 0; i < 4; i++){
+        f.style.setProperty("--x" + i, spot());
+        f.style.setProperty("--y" + i, spot());
+      }
+      f.style.setProperty("--z0", (kind.z[0] * c / 84).toFixed(0) + "px");
+      f.style.setProperty("--z1", (kind.z[1] * c / 84).toFixed(0) + "px");
+      f.style.setProperty("--ft", (kind.t[0] + rnd() * (kind.t[1] - kind.t[0])).toFixed(1) + "s");
+      f.style.animationDelay = (-rnd() * 20).toFixed(1) + "s";
+      f.innerHTML = '<div class="up" style="transform:translateZ(0)">' +
+        '<div class="bb"><span class="glyph sm">' + kind.g + '</span></div></div>';
+      DOM.flyers.appendChild(f);
+    }
+  });
+}
+
+/* every standee on the board, so one gust can catch all of them */
+function allStandees(){
+  const out = [];
+  S.board.forEach(t => { if (t.bbNode && t.bbNode.firstChild) out.push({bb:t.bbNode, col:coordsOf(t.i).col}); });
+  [DOM.decor, DOM.props].forEach(layer => {
+    if (!layer) return;
+    Array.from(layer.querySelectorAll(".bb")).forEach(bb =>
+      out.push({bb, col:Math.round(parseFloat(bb.parentElement.style.left || 0) / (CELL || 1))}));
+  });
+  return out;
+}
+/* a gust rolls left to right and everything growing leans out of its way */
+function windGust(){
+  if (!S.players.length || S.over) return;
+  SFX.play("wind");
+  const mill = document.getElementById("mill");
+  if (mill){
+    mill.classList.add("gusty");
+    setTimeout(() => mill.classList.remove("gusty"), 5200);
+  }
+  allStandees().forEach(o => {
+    setTimeout(() => {
+      o.bb.classList.add("gust");
+      setTimeout(() => o.bb.classList.remove("gust"), 960);
+    }, clamp(o.col, -2, 9) * 72 + Math.random() * 70);
+  });
+  leafBlow(9 + Math.floor(Math.random() * 6));
+}
+function leafBlow(n){
+  const chars = S.wx === "drought" ? ["\ud83c\udf42","\ud83c\udf42","\ud83c\udf3e"]
+                                   : ["\ud83c\udf43","\ud83c\udf42","\ud83c\udf43","\ud83c\udf38"];
+  for (let i = 0; i < n; i++){
+    const l = el("div", "leaf", chars[i % chars.length]);
+    l.style.left = (-6 + Math.random() * 30) + "vw";
+    l.style.top = (18 + Math.random() * 60) + "vh";
+    l.style.setProperty("--lx", (70 + Math.random() * 60) + "vw");
+    l.style.setProperty("--ly", (-14 + Math.random() * 34) + "vh");
+    l.style.setProperty("--lr", (Math.random() * 1080 - 540) + "deg");
+    l.style.animationDuration = (2.1 + Math.random() * 1.9) + "s";
+    l.style.animationDelay = (Math.random() * .8) + "s";
+    l.style.fontSize = (11 + Math.random() * 12) + "px";
+    document.body.appendChild(l);
+    setTimeout(() => l.remove(), 5200);
+  }
+}
+
+/* make one animal hop and speak, so what you hear is something you can see */
+function animalSpeaks(){
+  const live = S.board.filter(t => t.animal && t.bbNode);
+  const penned = DOM.props ? Array.from(DOM.props.querySelectorAll(".bb")) : [];
+  if (live.length && (!penned.length || Math.random() < .7)){
+    const t = pick(live, Math.random);
+    hopStandee(t.bbNode);
+    return ANIMALS[t.animal.key].sfx;
+  }
+  if (penned.length){
+    const bb = pick(penned, Math.random);
+    hopStandee(bb);
+    if (bb.dataset.sfx) return bb.dataset.sfx;
+  }
+  const wild = DOM.decor ? Array.from(DOM.decor.querySelectorAll(".bb")).filter(b => b.dataset.sfx) : [];
+  if (wild.length && Math.random() < .6){
+    const bb = pick(wild, Math.random);
+    hopStandee(bb);
+    return bb.dataset.sfx;
+  }
+  return null;
+}
+function hopStandee(bb, say){
+  if (!bb) return;
+  bb.classList.remove("speak");
+  void bb.offsetWidth;
+  bb.classList.add("speak");
+  setTimeout(() => bb.classList.remove("speak"), 760);
+  if (say){
+    const n = el("span", "say", say);
+    bb.appendChild(n);
+    setTimeout(() => n.remove(), 950);
+  }
+}
+
+/* a thought bubble over a farmer */
+function bubble(p, emoji){
+  if (!p || !p.lift) return;
+  const b = el("div", "bb bubble", '<span class="glyph">' + emoji + '</span>');
+  p.lift.appendChild(b);
+  setTimeout(() => b.remove(), 1800);
+}
+/* a crop coming ripe */
+function ripenBurst(i){
+  const pt = tileCenter(i);
+  const w = el("div", "dust");
+  w.style.left = pt.x + "px"; w.style.top = pt.y + "px";
+  w.innerHTML = '<div class="ripering"></div>';
+  DOM.bfx.appendChild(w);
+  setTimeout(() => w.remove(), 1000);
+  sparkle(i, ["\u2728","\ud83c\udf1f"], 6);
+}
+/* the whole field stretches awake at dawn */
+function rippleBoard(){
+  S.board.forEach(t => {
+    if (!t.node) return;
+    const {row, col} = coordsOf(t.i);
+    setTimeout(() => {
+      t.node.classList.add("wake");
+      setTimeout(() => t.node.classList.remove("wake"), 720);
+    }, (6 - row) * 55 + col * 18);
+  });
+}
+
+/* a farmer who isn't rolling still fidgets */
+function pawnIdle(){
+  const waiting = S.players.filter(p => p.alive && p.node && p.idx !== S.cur);
+  if (!waiting.length) return;
+  const p = pick(waiting, Math.random);
+  const bb = p.node.querySelector(".bb");
+  if (!bb) return;
+  bb.classList.remove("glance");
+  void bb.offsetWidth;
+  bb.classList.add("glance");
+  setTimeout(() => bb.classList.remove("glance"), 1560);
+}
+
+/* a skein of birds crossing the sky, well above the field */
+function flyPast(){
+  const n = 3 + Math.floor(Math.random() * 4);
+  const f = el("div", "flock");
+  f.style.top = (5 + Math.random() * 20) + "vh";
+  f.style.fontSize = (10 + Math.random() * 7) + "px";
+  f.style.opacity = (0.55 + Math.random() * 0.35).toFixed(2);
+  f.style.animationDuration = (17 + Math.random() * 13) + "s";
+  let html = "";
+  for (let k = 0; k < n; k++)
+    html += '<i style="animation-delay:' + (k * .12).toFixed(2) +
+            's;transform:translateY(' + (Math.abs(k - (n - 1) / 2) * 7).toFixed(0) + 'px)">🕊️</i>';
+  f.innerHTML = html;
+  DOM.sky.appendChild(f);
+  setTimeout(() => f.remove(), 32000);
+  if (Math.random() < .5) SFX.voice("bird");
+}
+
+/* every living-field timer, started and stopped as one */
+const LIFE = [];
+function startLife(){
+  stopLife();
+  LIFE.push(setInterval(windGust, 21000));
+  LIFE.push(setInterval(pawnIdle, 4100));
+  LIFE.push(setInterval(flyPast, 17000));
+  LIFE.push(setInterval(() => {
+    /* a ripe crop catching the light */
+    if (!S.players.length || S.over) return;
+    const ripe = S.board.filter(t => t.crop && isRipe(t));
+    if (ripe.length) sparkle(pick(ripe, Math.random).i, ["✨"], 3);
+  }, 3300));
+  LIFE.push(setInterval(() => {
+    if (!S.players.length || S.over) return;
+    const growing = S.board.filter(t => t.crop && t.bbNode);
+    if (growing.length) hopStandee(pick(growing, Math.random).bbNode);
+  }, 5200));
+}
+function stopLife(){ while (LIFE.length) clearInterval(LIFE.pop()); }
+
+/* ============ pawns ============ */
+function buildPawns(){
+  DOM.pawns.innerHTML = "";
+  S.players.forEach(p => {
+    const n = el("div", "pawn");
+    n.style.setProperty("--pc", p.color);
+    n.innerHTML = '<div class="sh"></div><div class="lift"><div class="disc"></div>' +
+      '<div class="bb"><span class="glyph">' + p.emoji + '</span></div>' +
+      '<div class="crown">👑</div></div>';
+    DOM.pawns.appendChild(n);
+    p.node = n; p.lift = n.querySelector(".lift"); p.sh = n.querySelector(".sh");
+  });
+  layoutPawns(true);
+}
+/* several pawns may share a tile — fan them out */
+function pawnOffset(p){
+  const same = S.players.filter(q => q.pos === p.pos && q.alive);
+  const k = same.indexOf(p), n = same.length;
+  if (n <= 1) return {ox:0, oy:0};
+  const c = cell(), r = c * .21;
+  const a = (k / n) * Math.PI * 2;
+  return {ox:Math.cos(a) * r, oy:Math.sin(a) * r * .8};
+}
+function placePawn(p, i, extra){
+  const pt = tileCenter(i), off = pawnOffset(p);
+  p.node.style.left = (pt.x + off.ox + (extra?.dx || 0)) + "px";
+  p.node.style.top = (pt.y + off.oy + (extra?.dy || 0)) + "px";
+}
+function layoutPawns(){
+  S.players.forEach(p => {
+    if (!p.node) return;
+    p.node.style.display = p.alive ? "" : "none";
+    placePawn(p, p.pos);
+    p.node.classList.toggle("turn", p.idx === S.cur && !S.over);
+    p.node.style.zIndex = 400 + Math.round(depthOf(p.pos) * 100);
+  });
+  moveSpotlight();
+  markLeader();
+}
+/* a ring of light marks whose turn it is — it slides between tiles, the board does not */
+function moveSpotlight(){
+  const sl = DOM.spotlight;
+  if (!sl) return;
+  const p = S.players[S.cur];
+  if (!p || !p.alive || S.over || !S.players.length){ sl.classList.remove("on"); return; }
+  const pt = tileCenter(p.pos);
+  sl.style.left = pt.x.toFixed(1) + "px";
+  sl.style.top  = pt.y.toFixed(1) + "px";
+  sl.style.setProperty("--pc", p.color);
+  sl.style.zIndex = 380 + Math.round(depthOf(p.pos) * 100);
+  sl.classList.add("on");
+}
+
+function markLeader(){
+  let best = -1, bi = -1;
+  S.players.forEach(p => { if (!p.alive) return;
+    const v = netWorth(S.board, p, 1); if (v > best){ best = v; bi = p.idx; } });
+  S.players.forEach(p => p.node && p.node.classList.toggle("lead", p.idx === bi));
+}
+
+/* ============================================================================
+   PART 4 — HUD, feedback, FX, dice
+   ========================================================================== */
+function renderRail(){
+  DOM.rail.innerHTML = "";
+  S.players.forEach(p => {
+    const inc = animalIncome(p);
+    const crops = S.board.filter(t => t.crop && t.crop.owner === p.idx);
+    const ripe = crops.filter(isRipe).length;
+    const card = el("div", "pc glass" + (p.idx === S.cur && !S.over ? " act" : "") + (p.alive ? "" : " out"));
+    card.style.setProperty("--pc", p.color);
+    card.innerHTML =
+      '<div class="row1"><span class="av">' + p.emoji + '</span>' +
+      '<span class="nm">' + p.name + '</span>' +
+      '<span class="kind">' + (p.cpu ? "CPU" : "YOU") + '</span></div>' +
+      '<div class="coins"><b>' + p.coins + '</b><span>coins</span>' +
+        (inc ? '<span style="margin-left:auto;color:var(--leaf);font-weight:800">+' + inc + '/day</span>' : '') +
+      '</div>' +
+      '<div class="bars"><span>🌱 <i>' + crops.length + '</i> growing</span>' +
+        '<span>✅ <i>' + ripe + '</i> ripe</span>' +
+        '<span>🔁 run <i>' + Math.min(p.lap + 1, lapGoal() || 99) +
+        (lapGoal() ? '</i>/' + lapGoal() : '</i>') +
+        '</span></div>' +
+      '<div class="zoo">' + p.animals.map(k => ANIMALS[k].emoji).join("") + '</div>' +
+      '<div class="prog"><i style="width:' + Math.round(p.pos / LAST * 100) + '%"></i></div>' +
+      (p.skip > 0 ? '<span class="skipflag" title="skipping a turn">😴</span>' : '') +
+      (p.finished ? '<span class="skipflag" title="finished the season">🏆</span>' : '');
+    DOM.rail.appendChild(card);
+    p.coinEl = card.querySelector(".coins b");
+    if (p.shownCoins == null) p.shownCoins = p.coins;
+    p.coinEl.textContent = Math.round(p.shownCoins);
+  });
+  rollCoins();
+  markLeader();
+}
+
+/* coin totals count up instead of snapping, and only spin the clock while
+   they are actually moving */
+let coinRAF = 0;
+function rollCoins(){
+  if (coinRAF) return;
+  const step = () => {
+    let moving = false;
+    S.players.forEach(p => {
+      if (!p.coinEl) return;
+      if (p.shownCoins == null) p.shownCoins = p.coins;
+      if (Math.abs(p.shownCoins - p.coins) > 0.6){
+        p.shownCoins += (p.coins - p.shownCoins) * 0.22;
+        moving = true;
+        p.coinEl.classList.add("rolling");
+      } else {
+        p.shownCoins = p.coins;
+        p.coinEl.classList.remove("rolling");
+      }
+      p.coinEl.textContent = Math.round(p.shownCoins);
+    });
+    coinRAF = moving ? requestAnimationFrame(step) : 0;
+  };
+  coinRAF = requestAnimationFrame(step);
+}
+
+let lastWx = null;
+function renderWx(){
+  const W = WEATHER[S.wx];
+  if (lastWx !== S.wx){
+    lastWx = S.wx;
+    DOM.wxIcon.classList.remove("turn");
+    void DOM.wxIcon.offsetWidth;
+    DOM.wxIcon.classList.add("turn");
+    setTimeout(() => DOM.wxIcon.classList.remove("turn"), 950);
+  }
+  DOM.wxIcon.textContent = W.emoji;
+  DOM.wxName.textContent = W.name;
+  DOM.wxNote.textContent = W.note;
+  DOM.wxNext.textContent = WEATHER[S.wxNext].emoji;
+  DOM.dayTag.textContent = S.finalDay ? "Final Day" : "Day " + S.day;
+  DOM.sky.className = S.wx;
+  const wet = S.wx === "rain" || S.wx === "storm";
+  DOM.rainLayer.classList.toggle("on", wet);
+  DOM.heat.classList.toggle("on", S.wx === "drought");
+  if (wet) SFX.rain(S.wx === "storm"); else SFX.rainOff();
+  buildRain(wet ? (S.wx === "storm" ? 120 : 70) : 0);
+}
+function buildRain(n){
+  if (DOM.rainLayer.childElementCount === n) return;
+  DOM.rainLayer.innerHTML = "";
+  for (let i = 0; i < n; i++){
+    const d = el("div", "drop");
+    d.style.left = (Math.random() * 100) + "vw";
+    d.style.height = (10 + Math.random() * 22) + "px";
+    d.style.animationDuration = (.45 + Math.random() * .5) + "s";
+    d.style.animationDelay = (-Math.random() * 1.2) + "s";
+    d.style.opacity = .35 + Math.random() * .55;
+    DOM.rainLayer.appendChild(d);
+  }
+}
+function renderGoal(){
+  const M = MODES[S.mode];
+  const goal = M.laps ? 'Finish <b>' + S.lapGoal + ' run' + (S.lapGoal > 1 ? 's' : '') +
+               ' to the barn</b> to call the Final Day — then the richest farm wins.'
+             : M.days ? 'The season ends after <b>day ' + M.days + '</b>. Richest farm wins.'
+             : 'First farm to bank <b>' + M.target + '</b> coins takes the season.';
+  DOM.goal.innerHTML = '<b>' + M.e + ' ' + M.name + '</b><br>' + goal;
+}
+
+function log(html, cls){
+  const d = el("div", cls || "", html);
+  DOM.log.appendChild(d);
+  while (DOM.log.childElementCount > 60) DOM.log.removeChild(DOM.log.firstChild);
+  DOM.log.scrollTop = DOM.log.scrollHeight;
+}
+function toast(emoji, text, big){
+  const t = el("div", "toast" + (big ? " big" : ""), '<span class="e">' + emoji + '</span>' + text);
+  DOM.toasts.appendChild(t);
+  setTimeout(() => t.remove(), 2600);
+}
+function setHint(html){ DOM.hint.innerHTML = html; }
+function who(p){ return '<span class="who" style="color:' + p.color + '">' + p.emoji + ' ' + p.name + '</span>'; }
+
+function inspect(i){
+  S.inspected = i;
+  const t = S.board[i], K = KINDS[t.kind];
+  let glyph = K.emoji || "🟫", title = K.name, sub = "tile " + (i + 1), body = K.desc, chips = "";
+  if (t.animal){
+    const A = ANIMALS[t.animal.key], o = S.players[t.animal.owner];
+    glyph = A.emoji; title = A.name; sub = o.name + "'s livestock";
+    body = "Pays " + o.name + " <b>" + A.income + " coins</b> every dawn, and keeps making " + A.makes + " forever.";
+  } else if (t.crop){
+    const C = CROPS[t.crop.key], o = S.players[t.crop.owner], pr = cropProgress(t);
+    glyph = pr >= 1 ? C.emoji : (pr < .45 ? "🌱" : "🌿");
+    title = C.name; sub = o.name + "'s crop";
+    body = pr >= 1
+      ? "<b>Ripe.</b> Worth <b>" + harvestValue(t, WEATHER[S.wx].mult) + " coins</b> to " + o.name +
+        " — or 40% of that to whoever scrumps it first."
+      : "Growing: <b>" + t.crop.grown + " / " + t.crop.need + " days</b>. Ripens to " +
+        harvestValue(t, WEATHER[S.wx].mult) + " coins.";
+  } else if (t.kind === "plot"){
+    glyph = t.soil === "rich" ? "✨" : t.soil === "rocky" ? "🪨" : "🟫";
+    title = t.soil === "rich" ? "Rich Soil" : t.soil === "rocky" ? "Rocky Soil" : "Plain Soil";
+    body = t.soil === "rich" ? "Empty, and generous: harvests here are worth <b>+50%</b>."
+         : t.soil === "rocky" ? "Empty and stubborn: crops need <b>one extra day</b>."
+         : "Empty soil, ready for seed.";
+  }
+  if (t.link != null) chips += '<span class="chip">🌉 shortcut to tile ' + (t.link + 1) + '</span>';
+  const here = S.players.filter(p => p.alive && p.pos === i);
+  here.forEach(p => chips += '<span class="chip" style="color:' + p.color + '">' + p.emoji + ' ' + p.name + '</span>');
+  DOM.insp.innerHTML =
+    '<div class="ih"><span class="g">' + glyph + '</span><span><b>' + title + '</b><small>' + sub + '</small></span></div>' +
+    '<div class="id">' + body + '</div>' + chips;
+}
+
+/* ---- FX ------------------------------------------------------------------ */
+function rectOf(i){
+  const t = S.board[i];
+  return t && t.node ? t.node.getBoundingClientRect() : {left:innerWidth/2, top:innerHeight/2, width:0, height:0};
+}
+function centerOf(i){ const r = rectOf(i); return {x:r.left + r.width/2, y:r.top + r.height/2}; }
+function floatText(i, text, color){
+  const c = centerOf(i);
+  const n = el("div", "float", text);
+  n.style.left = c.x + "px"; n.style.top = (c.y - 28) + "px"; n.style.color = color || "#ffd166";
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 1600);
+}
+/* where a farmer's card sits on screen, so winnings fly to the right place */
+function cardPoint(p){
+  const node = p && p.coinEl;
+  if (!node || !node.getBoundingClientRect) return {x:innerWidth * .12, y:70};
+  const r = node.getBoundingClientRect();
+  if (!r.width && !r.height) return {x:innerWidth * .12, y:70};
+  return {x:r.left + r.width / 2, y:r.top + r.height / 2};
+}
+function cropFly(i, p, emoji){
+  const c = centerOf(i), tgt = cardPoint(p);
+  const n = el("div", "cropfly", emoji);
+  n.style.left = c.x + "px"; n.style.top = c.y + "px";
+  n.style.setProperty("--fx", (tgt.x - c.x) + "px");
+  n.style.setProperty("--fy", (tgt.y - c.y) + "px");
+  document.body.appendChild(n);
+  setTimeout(() => n.remove(), 1200);
+}
+function coinBurst(i, n, target){
+  const c = centerOf(i);
+  const tgt = target || {x:innerWidth * .12, y:70};
+  for (let k = 0; k < Math.min(n, 14); k++){
+    const f = el("div", "coinfly", "🪙");
+    f.style.left = (c.x - 10 + (Math.random() - .5) * 34) + "px";
+    f.style.top = (c.y - 18) + "px";
+    f.style.setProperty("--cx", (tgt.x - c.x) + "px");
+    f.style.setProperty("--cy", (tgt.y - c.y) + "px");
+    f.style.animationDelay = (k * .055) + "s";
+    document.body.appendChild(f);
+    setTimeout(() => f.remove(), 1200 + k * 60);
+  }
+}
+function sparkle(i, chars, n){
+  const c = centerOf(i);
+  for (let k = 0; k < (n || 10); k++){
+    const s = el("div", "spark", chars[k % chars.length]);
+    const a = Math.random() * Math.PI * 2, d = 40 + Math.random() * 70;
+    s.style.left = c.x + "px"; s.style.top = c.y + "px";
+    s.style.setProperty("--sx", Math.cos(a) * d + "px");
+    s.style.setProperty("--sy", (Math.sin(a) * d - 26) + "px");
+    s.style.setProperty("--sr", (Math.random() * 720 - 360) + "deg");
+    s.style.animationDelay = (Math.random() * .22) + "s";
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 1400);
+  }
+}
+function trailPuff(x, y){
+  const w = el("div", "trail");
+  w.style.left = x + "px"; w.style.top = y + "px";
+  w.innerHTML = "<i></i>";
+  DOM.bfx.appendChild(w);
+  setTimeout(() => w.remove(), 620);
+}
+function dustAt(i){
+  const pt = tileCenter(i);
+  const w = el("div", "dust");
+  w.style.left = pt.x + "px"; w.style.top = pt.y + "px";
+  for (let k = 0; k < 7; k++){
+    const p = el("i");
+    const a = Math.random() * Math.PI * 2, d = 12 + Math.random() * 24;
+    p.style.setProperty("--dx", Math.cos(a) * d + "px");
+    p.style.setProperty("--dy", Math.sin(a) * d + "px");
+    p.style.animationDelay = (Math.random() * .1) + "s";
+    w.appendChild(p);
+  }
+  DOM.bfx.appendChild(w);
+  setTimeout(() => w.remove(), 900);
+}
+function shockAt(i){
+  const pt = tileCenter(i);
+  const w = el("div", "dust"); w.style.left = pt.x + "px"; w.style.top = pt.y + "px";
+  w.innerHTML = '<div class="shockwave"></div>';
+  DOM.bfx.appendChild(w); setTimeout(() => w.remove(), 900);
+}
+function lightning(){
+  DOM.flash.classList.remove("go");
+  void DOM.flash.offsetWidth;
+  DOM.flash.classList.add("go");
+  SFX.play("thunder");
+}
+function confettiStorm(n){
+  const chars = ["🌽","🌻","🎃","🍓","🍉","🌾","🪙","⭐","🥕","🍎"];
+  for (let i = 0; i < n; i++){
+    const c = el("div", "conf", chars[i % chars.length]);
+    c.style.left = (Math.random() * 100) + "vw";
+    c.style.animationDuration = (2.4 + Math.random() * 2.8) + "s";
+    c.style.animationDelay = (Math.random() * 1.3) + "s";
+    c.style.fontSize = (13 + Math.random() * 20) + "px";
+    c.style.setProperty("--cr", (Math.random() * 1440 - 720) + "deg");
+    DOM.conf.appendChild(c);
+    setTimeout(() => c.remove(), 6200);
+  }
+}
+
+/* ---- the 3D die ---------------------------------------------------------- */
+const PIPS = {
+  1:[5], 2:[1,9], 3:[1,5,9], 4:[1,3,7,9], 5:[1,3,5,7,9], 6:[1,3,4,6,7,9],
+};
+function paintDie(){
+  const order = [1,2,3,4,5,6];
+  $$(".die-face").forEach((f, k) => {
+    const n = order[k];
+    f.innerHTML = "";
+    for (let cellIdx = 1; cellIdx <= 9; cellIdx++){
+      const b = el("b");
+      if (!PIPS[n].includes(cellIdx)) b.style.visibility = "hidden";
+      f.appendChild(b);
+    }
+  });
+}
+/* rotations that bring each value to the front */
+const DIE_ANGLE = {1:[0,0], 2:[0,-90], 3:[0,180], 4:[0,90], 5:[-90,0], 6:[90,0]};
+function setDie(v, spins){
+  const [rx, ry] = DIE_ANGLE[v];
+  S.dieRx = rx + 360 * (spins || 0);
+  S.dieRy = ry + 360 * (spins || 0);
+  DOM.dieCube.style.transform = "rotateX(" + S.dieRx + "deg) rotateY(" + S.dieRy + "deg)";
+}
+async function rollDieAnim(v){
+  DOM.dieScene.classList.remove("wobble");
+  void DOM.dieScene.offsetWidth;
+  DOM.dieScene.classList.add("wobble");
+  setTimeout(() => DOM.dieScene.classList.remove("wobble"), 440);
+  SFX.play("diceRattle");
+  await sleep(230);
+  DOM.dieCube.style.transition = "transform .78s cubic-bezier(.22,.85,.2,1)";
+  setDie(v, 2 + Math.floor(Math.random() * 2));
+  await sleep(790);
+  DOM.dieCube.style.transition = "transform .18s ease";
+  DOM.dieCube.style.transform = "rotateX(" + (S.dieRx - 7) + "deg) rotateY(" + (S.dieRy + 5) + "deg)";
+  SFX.play("diceLand");
+  await sleep(150);
+  setDie(v, 0);
+  S.dieRx = DIE_ANGLE[v][0]; S.dieRy = DIE_ANGLE[v][1];
+}
+
+/* ---- animated pawn movement --------------------------------------------- */
+function tween(ms, fn){
+  return new Promise(res => {
+    const gen = S.gen, t0 = performance.now();
+    function step(t){
+      if (gen !== S.gen) return res();
+      const k = clamp((t - t0) / ms, 0, 1);
+      fn(k);
+      if (k < 1) requestAnimationFrame(step); else res();
+    }
+    requestAnimationFrame(step);
+  });
+}
+async function hopTo(p, to, dur){
+  const from = p.pos, a = tileCenter(from), b = tileCenter(to), off = pawnOffset(p);
+  const c = cell(), lift = c * .55;
+  SFX.play("hop", to);
+  /* dust kicked up mid-hop on a fixed schedule, so the trail looks the same
+     whatever frame rate the device manages */
+  const span = dur || 230;
+  [0.28, 0.52, 0.76].forEach(f => setTimeout(() => {
+    trailPuff(a.x + (b.x - a.x) * f + off.ox, a.y + (b.y - a.y) * f + off.oy);
+  }, span * f));
+  await tween(span, k => {
+    const e = k, x = a.x + (b.x - a.x) * e, y = a.y + (b.y - a.y) * e;
+    const z = Math.sin(Math.PI * k) * lift;
+    p.node.style.left = (x + off.ox) + "px";
+    p.node.style.top = (y + off.oy) + "px";
+    p.lift.style.setProperty("--lz", z.toFixed(1) + "px");
+    const sq = 1 + Math.sin(Math.PI * k) * .18;
+    p.lift.style.setProperty("--sq", sq);
+    p.sh.style.opacity = (0.34 - z / (lift * 4)).toFixed(2);
+  });
+  p.pos = to;
+  p.lift.style.setProperty("--lz", "0px");
+  p.sh.style.opacity = "";
+  p.node.style.zIndex = 400 + Math.round(depthOf(to) * 100);
+  dustAt(to);
+  placePawn(p, to);
+}
+async function walk(p, path, opt){
+  let gathered = 0, gold = 0;
+  for (let n = 0; n < path.length; n++){
+    const to = path[n];
+    /* stepping off the barn onto the farmyard rides the return lane */
+    if (!opt?.back && p.pos === LAST && to === 0) await rideHome(p);
+    else await hopTo(p, to, opt?.dur);
+    p.abs += opt && opt.back ? -1 : 1;
+    p.stats.steps++;
+    renderRail();
+    if (!opt?.silent){
+      /* you gather your own ripe crops as you drive straight over them */
+      if (n < path.length - 1){
+        const g = await gatherOnPass(p, to);
+        if (g){ gathered++; gold += g; }
+      }
+      if (to === LAST) await crossBarn(p);
+      else if (to === 0) await crossGate(p);
+    }
+    if (S.gen !== p.gen0 || S.over) return;
+    await sleep(opt?.gap ?? 40);
+  }
+  if (gathered > 1) toast("🚜", p.name + " swept up " + gathered + " ripe crops for " + gold + " coins");
+}
+/* driving over one of your own ripe crops brings it in without stopping */
+async function gatherOnPass(p, i){
+  const t = S.board[i];
+  if (!t.crop || t.crop.owner !== p.idx || !isRipe(t)) return 0;
+  const val = harvest(t, p, WEATHER[S.wx].mult, " <i>on the move</i>");
+  await sleep(280);
+  return val;
+}
+async function rideHome(p){
+  SFX.play("tractor");
+  SFX.voice("dog");
+  toast("🛤️", p.name + " rolls down the return lane");
+  await flyTo(p, 0, 900, 3.4);
+}
+/* a swooping flight used by twisters and bridges */
+async function flyTo(p, to, dur, arc){
+  const a = tileCenter(p.pos), b = tileCenter(to), off = pawnOffset(p), c = cell();
+  await tween(dur || 620, k => {
+    const e = ease(k);
+    p.node.style.left = (a.x + (b.x - a.x) * e + off.ox) + "px";
+    p.node.style.top = (a.y + (b.y - a.y) * e + off.oy) + "px";
+    p.lift.style.setProperty("--lz", (Math.sin(Math.PI * k) * c * (arc || 2.3)).toFixed(1) + "px");
+    p.sh.style.opacity = (0.34 - Math.sin(Math.PI * k) * .3).toFixed(2);
+  });
+  p.pos = to;
+  p.lift.style.setProperty("--lz", "0px");
+  p.sh.style.opacity = "";
+  placePawn(p, to);
+  dustAt(to); shockAt(to);
+}
+
+/* ============================================================================
+   PART 5 — MODAL / CHOICE PLUMBING
+   ========================================================================== */
+let modalResolve = null;
+function closeModal(){
+  DOM.modal.classList.remove("on");
+  DOM.mBody.innerHTML = ""; DOM.mFoot.innerHTML = "";
+  modalResolve = null;
+}
+/* opts: {emoji,title,sub,cards:[{g,b,meta,cost,badge,value,disabled}],buttons:[{label,value,cls}] } */
+function ask(opts){
+  return new Promise(res => {
+    modalResolve = v => { closeModal(); res(v); };
+    DOM.mTitle.innerHTML = '<span class="e">' + (opts.emoji || "🌱") + '</span> <span>' + opts.title + '</span>';
+    DOM.mSub.innerHTML = opts.sub || "";
+    DOM.mBody.innerHTML = "";
+    if (opts.html) DOM.mBody.innerHTML = opts.html;
+    if (opts.cards){
+      const wrap = el("div", "cards");
+      opts.cards.forEach((c, n) => {
+        const card = el("div", "card" + (c.disabled ? " no" : ""));
+        card.innerHTML =
+          '<span class="g">' + c.g + '</span><b>' + c.b + '</b>' +
+          (c.meta ? '<div class="meta">' + c.meta + '</div>' : '') +
+          (c.badge ? '<span class="badge">' + c.badge + '</span>' : '') +
+          (c.cost != null ? '<div class="cost">' + c.cost + '</div>' : '');
+        if (!c.disabled){
+          card.addEventListener("click", () => { SFX.play("click"); modalResolve && modalResolve(c.value); });
+          card.dataset.hot = n + 1;
+        }
+        wrap.appendChild(card);
+      });
+      DOM.mBody.appendChild(wrap);
+    }
+    DOM.mFoot.innerHTML = "";
+    (opts.buttons || []).forEach(b => {
+      const n = el("button", "btn " + (b.cls || "ghost"), b.label);
+      n.addEventListener("click", () => { SFX.play("click"); modalResolve && modalResolve(b.value); });
+      DOM.mFoot.appendChild(n);
+    });
+    DOM.modal.classList.add("on");
+  });
+}
+/* the flippable event card */
+function showCard(card){
+  return new Promise(res => {
+    modalResolve = () => { closeModal(); res(); };
+    DOM.mTitle.innerHTML = '<span class="e">🎪</span> <span>County Fair</span>';
+    DOM.mSub.innerHTML = "";
+    DOM.mBody.innerHTML =
+      '<div class="eventcard"><span class="kind">' + (card.kind === "bad" ? "misfortune" : "fortune") + '</span>' +
+      '<span class="g">' + card.e + '</span><b>' + card.t + '</b><p>' + card.d + '</p></div>';
+    DOM.mFoot.innerHTML = "";
+    const n = el("button", "btn gold", "Take it 🌾");
+    n.addEventListener("click", () => modalResolve && modalResolve());
+    DOM.mFoot.appendChild(n);
+    DOM.modal.classList.add("on");
+    SFX.play("card");
+  });
+}
+function setActions(list){
+  DOM.actions.innerHTML = "";
+  (list || []).forEach(a => {
+    const b = el("button", "btn " + (a.cls || ""), a.label + (a.k ? '<span class="k">' + a.k + '</span>' : ''));
+    b.addEventListener("click", () => { SFX.play("click"); a.fn(); });
+    if (a.id) b.id = a.id;
+    DOM.actions.appendChild(b);
+  });
+}
+
+/* ============================================================================
+   PART 6 — ECONOMY HELPERS
+   ========================================================================== */
+function pay(p, amount, tileIdx, label){
+  p.coins = Math.max(0, p.coins + amount);
+  renderRail();
+  if (tileIdx != null){
+    floatText(tileIdx, (amount > 0 ? "+" : "") + amount, amount > 0 ? "#8ede63" : "#ff7a90");
+    if (amount > 0){ coinBurst(tileIdx, Math.ceil(Math.abs(amount) / 28)); SFX.play("coin", Math.ceil(amount / 40)); }
+    else SFX.play("spend");
+  }
+  if (label) log(label, amount > 0 ? "lg" : "lr");
+}
+function plantCrop(t, p, key){
+  t.crop = {key, owner:p.idx, grown:0, need:daysNeeded(t, key)};
+  p.stats.planted++;
+  renderTile(t.i, true);
+  SFX.play("plant");
+  bubble(p, "\ud83c\udf31");
+  setTimeout(() => chatter(t.i, "bird"), 320);
+  sparkle(t.i, ["🌱","💧","✨"], 8);
+}
+function grow(t, n){
+  if (!t.crop) return false;
+  const was = isRipe(t), before = t.crop.grown;
+  t.crop.grown = Math.min(t.crop.need, t.crop.grown + n);
+  const nowRipe = !was && isRipe(t);
+  renderTile(t.i, nowRipe);
+  /* a visible spurt for anything that gained a day but isn't ripe yet */
+  if (!nowRipe && t.crop.grown > before && t.bbNode){
+    t.bbNode.classList.add("spurt");
+    setTimeout(() => { if (t.bbNode) t.bbNode.classList.remove("spurt"); }, 640);
+  }
+  return nowRipe;
+}
+function harvest(t, p, mult, tag){
+  const val = harvestValue(t, mult);
+  const key = t.crop.key;
+  t.crop = null;
+  renderTile(t.i);
+  p.coins += val;
+  p.stats.harvested++; p.stats.earned += val;
+  SFX.play("harvest");
+  cropFly(t.i, p, CROPS[key].emoji);
+  bubble(p, val >= 150 ? "\ud83e\udd29" : "\ud83e\ude99");
+  setTimeout(() => chatter(t.i, "cluck"), 380);
+  coinBurst(t.i, Math.ceil(val / 22), cardPoint(p));
+  floatText(t.i, "+" + val, "#ffd166");
+  sparkle(t.i, [CROPS[key].emoji, "✨", "🪙"], 12);
+  renderRail();
+  log(who(p) + " harvested " + CROPS[key].emoji + " " + CROPS[key].name + " for <b>" + val + "</b>" + (tag || ""), "lg");
+  return val;
+}
+function myCrops(p){ return S.board.filter(t => t.crop && t.crop.owner === p.idx); }
+
+/* ---- barnyard chatter -----------------------------------------------------
+   Animals are the voice of the farm, so they answer to nearly everything:
+   dawn, harvests, purchases, tile landings and idle moments. */
+const WILD = ["bird","quack","dog","turkey","goat","neigh","crow","cluck"];
+function boardAnimals(){
+  return S.board.filter(t => t.animal).map(t => ANIMALS[t.animal.key].sfx);
+}
+/* the ambience picks a real animal from the board when there is one */
+function herdPick(){
+  const seen = animalSpeaks();          /* hops a standee and tells us its voice */
+  if (seen) return seen;
+  return pick(WILD, Math.random);
+}
+/* a nearby animal reacts, and its standee gives a little hop */
+function chatter(nearIdx, fallback){
+  const lively = S.board.filter(t => t.animal);
+  if (lively.length){
+    let best = lively[0], bd = 9;
+    for (const t of lively){
+      const d = Math.min(Math.abs(t.i - nearIdx), NTILES - Math.abs(t.i - nearIdx));
+      if (d < bd){ bd = d; best = t; }
+    }
+    SFX.voice(ANIMALS[best.animal.key].sfx);
+    hopStandee(best.bbNode, ANIMALS[best.animal.key].emoji);
+    return;
+  }
+  SFX.voice(fallback || pick(WILD, Math.random));
+}
+
+/* ============================================================================
+   PART 7 — TILE RESOLUTION
+   ========================================================================== */
+async function resolvePlot(p, t){
+  /* livestock standing here */
+  if (t.animal){
+    const A = ANIMALS[t.animal.key], o = S.players[t.animal.owner];
+    SFX.voice(A.sfx);
+    t.node.querySelector(".bb").classList.add("pop");
+    setTimeout(() => t.node.querySelector(".bb").classList.remove("pop"), 700);
+    if (o.idx === p.idx){ pay(p, 8, t.i, who(p) + " collected " + A.makes + " from " + A.emoji + " (+8)"); }
+    else { pay(p, 5, t.i, who(p) + " gave " + o.name + "'s " + A.emoji + " a scratch (+5 tip)"); }
+    await sleep(700);
+    return;
+  }
+  /* empty soil → plant */
+  if (!t.crop){
+    const offer = shuffle(CROP_KEYS, S.rnd).slice(0, 3);
+    const soilNote = t.soil === "rich" ? " <b>✨ Rich soil: +50% harvest.</b>"
+                   : t.soil === "rocky" ? " <b>🪨 Rocky soil: +1 day to grow.</b>" : "";
+    let choice;
+    if (p.cpu){
+      choice = aiPickCrop(p, t, offer);
+      await sleep(520);
+    } else {
+      choice = await ask({
+        emoji:"🌱", title:"Plant a crop",
+        sub:"Tile " + (t.i + 1) + "." + soilNote + " You have <b>" + p.coins + "</b> coins.",
+        cards: offer.map(k => {
+          const C = CROPS[k], need = daysNeeded(t, k);
+          const val = Math.round(C.value * (t.soil === "rich" ? 1.5 : 1));
+          return {g:C.emoji, b:C.name, value:k, disabled:p.coins < C.cost,
+            badge: t.soil === "rich" ? "+50%" : null,
+            meta:"ripens in <em>" + need + " day" + (need > 1 ? "s" : "") + "</em><br>sells for <em>" + val + "</em> coins",
+            cost:"−" + C.cost + " 🪙"};
+        }),
+        buttons:[{label:"Leave it fallow", value:null}],
+      });
+    }
+    if (!choice || p.coins < CROPS[choice].cost){
+      if (!p.cpu) log(who(p) + " left tile " + (t.i + 1) + " fallow.");
+      return;
+    }
+    p.coins -= CROPS[choice].cost;
+    plantCrop(t, p, choice);
+    pay(p, 0, null);
+    floatText(t.i, "−" + CROPS[choice].cost, "#ff9ec4");
+    log(who(p) + " planted " + CROPS[choice].emoji + " " + CROPS[choice].name +
+        " on tile " + (t.i + 1) + " (" + t.crop.need + "d)");
+    await sleep(680);
+    return;
+  }
+  /* own crop */
+  if (t.crop.owner === p.idx){
+    if (isRipe(t)){
+      harvest(t, p, WEATHER[S.wx].mult, WEATHER[S.wx].mult > 1 ? " <i>(rainbow bonus)</i>" : "");
+      await sleep(820);
+    } else {
+      grow(t, 1);
+      SFX.play("water");
+      setTimeout(() => SFX.voice("quack"), 300);
+      sparkle(t.i, ["💧","💦"], 8);
+      floatText(t.i, "+1 day 💧", "#7fd4ff");
+      log(who(p) + " watered their " + CROPS[t.crop.key].emoji + " — " +
+          (isRipe(t) ? "<b>it's ripe!</b>" : t.crop.grown + "/" + t.crop.need + " days"), "lb");
+      if (isRipe(t)) SFX.play("grow");
+      await sleep(740);
+    }
+    return;
+  }
+  /* rival's crop */
+  const owner = S.players[t.crop.owner], C = CROPS[t.crop.key];
+  if (isRipe(t)){
+    const full = harvestValue(t, WEATHER[S.wx].mult);
+    const mine = Math.round(full * .4), theirs = full - mine;
+    let doIt = true;
+    if (p.cpu) { doIt = mine >= 26; await sleep(460); }
+    else {
+      doIt = await ask({
+        emoji:"🌾", title:"Someone else's ripe crop",
+        sub:owner.emoji + " <b>" + owner.name + "</b> has a ripe " + C.emoji + " " + C.name +
+            " here, worth <b>" + full + "</b> coins.",
+        cards:[
+          {g:"🤫", b:"Scrump it", value:true,
+            meta:"you pocket <em>" + mine + "</em><br>" + owner.name + " keeps <em>" + theirs + "</em>",
+            cost:"cheeky"},
+          {g:"🤝", b:"Be neighbourly", value:false,
+            meta:owner.name + " harvests <em>" + full + "</em><br>you get a <em>25</em> coin thank-you",
+            cost:"kind"},
+        ],
+      });
+    }
+    t.crop = null; renderTile(t.i);
+    if (doIt){
+      p.coins += mine; owner.coins += theirs; p.stats.scrumped += mine;
+      SFX.play("scrump"); SFX.voice("quack");
+      coinBurst(t.i, 7); floatText(t.i, "+" + mine + " 🤫", p.color);
+      log(who(p) + " scrumped " + owner.name + "'s " + C.emoji + " — <b>" + mine + "</b> for them, " +
+          theirs + " for " + owner.name, "lb");
+    } else {
+      owner.coins += full; p.coins += 25;
+      SFX.play("harvest"); coinBurst(t.i, 8);
+      floatText(t.i, "+" + full + " → " + owner.name, owner.color);
+      log(who(p) + " helped " + owner.name + " bring in " + C.emoji + " (" + full + ") and took a 25 tip", "lg");
+    }
+    renderRail();
+    await sleep(880);
+  } else {
+    grow(t, 1);
+    p.coins += 15;
+    SFX.play("water"); sparkle(t.i, ["💧","🤝"], 6);
+    floatText(t.i, "+15 tip 🤝", "#8ede63");
+    log(who(p) + " tended " + owner.name + "'s " + C.emoji + " and earned a 15 coin tip", "lb");
+    renderRail();
+    await sleep(740);
+  }
+}
+
+async function doWell(p){
+  const crops = myCrops(p);
+  SFX.play("water");
+  setTimeout(() => SFX.chorus(["quack","quack"], 260), 260);
+  sparkle(p.pos, ["💧","💦","🌈"], 14);
+  if (!crops.length){
+    pay(p, 20, p.pos, who(p) + " found nothing to water, so drew a bucket to sell (+20)");
+    await sleep(700); return;
+  }
+  let ripened = 0;
+  crops.forEach((t, n) => setTimeout(() => {
+    if (grow(t, 1)) ripened++;
+    sparkle(t.i, ["💧"], 4);
+  }, n * 110));
+  log(who(p) + " watered <b>" + crops.length + "</b> crop" + (crops.length > 1 ? "s" : "") + " from the well 💧", "lb");
+  toast("💧", "Well water: +1 day to " + crops.length + " crop" + (crops.length > 1 ? "s" : ""));
+  await sleep(500 + crops.length * 110);
+  if (ripened) SFX.play("grow");
+}
+
+async function doMarket(p, fromCard){
+  const ripe = myCrops(p).filter(isRipe);
+  SFX.play("bell");
+  setTimeout(() => SFX.chorus(["turkey","goat","cluck"], 240), 300);
+  if (!ripe.length){
+    pay(p, 30, p.pos, who(p) + " had nothing ripe, so sold jam at the market (+30)");
+    await sleep(700); return;
+  }
+  let total = 0;
+  for (const t of ripe){
+    total += harvest(t, p, 1.25 * WEATHER[S.wx].mult, " <i>(market +25%)</i>");
+    await sleep(320);
+  }
+  toast("🛒", (fromCard ? "Farmers' Market" : "Market day") + ": " + ripe.length + " crops for " + total + " coins");
+  await sleep(500);
+}
+
+async function doCoop(p){
+  const owned = {};
+  p.animals.forEach(k => owned[k] = (owned[k] || 0) + 1);
+  const cards = ANIMAL_KEYS.map(k => {
+    const A = ANIMALS[k];
+    return {g:A.emoji, b:A.name, value:k, disabled:p.coins < A.cost,
+      meta:"pays <em>" + A.income + "</em> coins every dawn<br>pays for itself in <em>" +
+           Math.ceil(A.cost / A.income) + "</em> days",
+      badge: owned[k] ? "×" + owned[k] : null, cost:"−" + A.cost + " 🪙"};
+  });
+  let choice;
+  if (p.cpu){ choice = aiPickAnimal(p); await sleep(520); }
+  else {
+    choice = await ask({emoji:"🐔", title:"The Coop",
+      sub:"Livestock pay out <b>every dawn, forever</b>. You have <b>" + p.coins + "</b> coins.",
+      cards, buttons:[{label:"Just visiting", value:null}]});
+  }
+  if (!choice || p.coins < ANIMALS[choice].cost){
+    if (!p.cpu) log(who(p) + " browsed the coop and bought nothing.");
+    else log(who(p) + " couldn't afford any livestock.");
+    return;
+  }
+  const A = ANIMALS[choice];
+  p.coins -= A.cost;
+  p.animals.push(choice);
+  /* park it on the nearest free plot behind the player, else in the pasture */
+  let home = null;
+  for (let d = 0; d < 7 && !home; d++){
+    for (const s of [(p.pos - d + NTILES) % NTILES, (p.pos + d) % NTILES]){
+      const t = S.board[s];
+      if (t && t.kind === "plot" && !t.crop && !t.animal){ home = t; break; }
+    }
+  }
+  if (home){ home.animal = {key:choice, owner:p.idx}; renderTile(home.i, true); }
+  layoutProps();
+  SFX.voice(A.sfx);
+  floatText(p.pos, "−" + A.cost, "#ff9ec4");
+  sparkle(p.pos, [A.emoji, "✨"], 10);
+  toast(A.emoji, p.name + " bought a " + A.name + " · +" + A.income + "/day");
+  log(who(p) + " bought a " + A.emoji + " " + A.name + " — <b>+" + A.income + "</b> coins every dawn", "lg");
+  renderRail();
+  await sleep(900);
+}
+
+/* ============================================================================
+   PART 8 — FARM CARDS
+   ========================================================================== */
+function drawFromDeck(){
+  if (!S.deck.length) S.deck = makeDeck(S.rnd);
+  const id = S.deck.pop();
+  return CARDS.find(c => c.id === id);
+}
+async function doFair(p){
+  const card = drawFromDeck();
+  SFX.play("card");
+  setTimeout(() => SFX.voice(pick(WILD, Math.random)), 420);
+  if (p.cpu){
+    toast(card.e, p.name + ": " + card.t);
+    await sleep(1150);
+  } else {
+    await showCard(card);
+  }
+  log(who(p) + " drew <b>" + card.e + " " + card.t + "</b> — " + card.d, card.kind === "bad" ? "lr" : "lg");
+  await applyCard(p, card);
+}
+async function applyCard(p, card){
+  const mine = myCrops(p);
+  switch (card.id){
+    case "bumper": {
+      if (!mine.length){ pay(p, 60, p.pos, "Nothing planted — the judges hand over 60 coins instead"); break; }
+      mine.forEach((t, n) => setTimeout(() => { grow(t, 99); sparkle(t.i, ["✨","🌟"], 6); }, n * 110));
+      SFX.play("grow");
+      toast("🌟", mine.length + " crop" + (mine.length > 1 ? "s" : "") + " ripened instantly!");
+      await sleep(400 + mine.length * 110);
+      break;
+    }
+    case "crows": {
+      if (!mine.length){ SFX.voice("crow"); toast("🐦‍⬛", "The crows found nothing to steal"); await sleep(700); break; }
+      const t = pick(mine, S.rnd), C = CROPS[t.crop.key];
+      t.crop = null; renderTile(t.i);
+      SFX.voice("crow"); SFX.play("bad");
+      sparkle(t.i, ["🐦‍⬛","🪶"], 12); floatText(t.i, "lost " + C.emoji, "#ff7a90");
+      log("Crows stripped " + p.name + "'s " + C.emoji + " on tile " + (t.i + 1), "lr");
+      await sleep(900);
+      break;
+    }
+    case "ribbon": pay(p, 130, p.pos, who(p) + " won a prize ribbon (+130)"); SFX.play("cash"); await sleep(700); break;
+    case "scare": p.scareDays = 3; toast("🧟", p.name + "'s scarecrow is on duty for 3 days"); await sleep(700); break;
+    case "hitch": SFX.play("tractor"); await shove(p, 4); await resolveLanding(p, 2); break;
+    case "mud": p.skip = 1; SFX.play("bad"); toast("🥾", p.name + " will miss a turn"); renderRail(); await sleep(700); break;
+    case "raising":
+      if (!mine.length){ pay(p, 50, p.pos, "No crops — the village pays 50 coins in thanks"); break; }
+      mine.forEach((t, n) => setTimeout(() => { grow(t, 1); sparkle(t.i, ["🔨"], 4); }, n * 90));
+      SFX.play("grow"); toast("🔨", "+1 day to " + mine.length + " crop" + (mine.length > 1 ? "s" : ""));
+      await sleep(400 + mine.length * 90); break;
+    case "piglet": {
+      p.animals.push("pig"); layoutProps(); renderRail();
+      SFX.voice("oink"); sparkle(p.pos, ["🐖","💕"], 10);
+      toast("🐖", p.name + " adopted a piglet · +" + ANIMALS.pig.income + "/day");
+      await sleep(900); break;
+    }
+    case "mkt": await doMarket(p, true); break;
+    case "irrig": p.irrigDays = 2; toast("🚿", p.name + "'s crops get double growth for 2 days"); await sleep(750); break;
+    case "tax": pay(p, -80, p.pos, who(p) + " paid the tractor tax (−80)"); await sleep(700); break;
+    case "shoe": p.luckyNext = 6; toast("🧲", p.name + "'s next roll is a 6"); SFX.play("bell"); await sleep(750); break;
+    case "swarm": SFX.play("gopher"); await shove(p, -4); await resolveLanding(p, 2); break;
+    case "egg": pay(p, 220, p.pos, who(p) + " found a golden egg (+220)"); SFX.play("cash"); SFX.voice("cluck");
+      sparkle(p.pos, ["🥇","✨","🪙"], 14); await sleep(900); break;
+    case "bees":
+      if (!mine.length){ pay(p, 55, p.pos, "No crops to pollinate — the beekeeper pays 55 for the honey"); break; }
+      SFX.voice("bee");
+      mine.forEach((t, n) => setTimeout(() => { grow(t, 2); sparkle(t.i, ["🐝","🌸"], 6); }, n * 100));
+      toast("🐝", "+2 days to " + mine.length + " crop" + (mine.length > 1 ? "s" : ""));
+      await sleep(450 + mine.length * 100); break;
+    case "hail": {
+      pay(p, -40, p.pos, who(p) + " paid 40 for hail damage");
+      const young = mine.filter(t => !isRipe(t)).sort((a, b) => a.crop.grown - b.crop.grown)[0];
+      if (young){
+        const C = CROPS[young.crop.key];
+        young.crop = null; renderTile(young.i);
+        sparkle(young.i, ["🧊","❄️"], 10); floatText(young.i, "flattened", "#7fd4ff");
+        log("Hail flattened " + p.name + "'s " + C.emoji + " seedling", "lr");
+      }
+      SFX.play("bad"); await sleep(850); break;
+    }
+  }
+  renderRail();
+}
+
+/* ============================================================================
+   PART 9 — MOVEMENT + LANDING RESOLUTION
+   ========================================================================== */
+async function shove(p, delta){
+  if (!delta) return;
+  /* the lane is a loop, so a shove wraps round it in either direction */
+  const path = delta > 0 ? walkPath(p.pos, delta) : walkBack(p.pos, -delta);
+  await walk(p, path, {dur:165, gap:18, silent:delta < 0, back:delta < 0});
+}
+
+async function resolveLanding(p, depth){
+  if (S.gen !== p.gen0 || S.over) return;
+  depth = depth || 0;
+  inspect(p.pos);
+  const t = S.board[p.pos];
+
+  switch (t.kind){
+    case "gate":
+      SFX.chorus(["dog","cluck","turkey"], 200);
+      yardStir();
+      pay(p, 15, p.pos, who(p) + " stopped home for a hot meal at the farmhouse (+15)");
+      await sleep(760); break;
+
+    case "plot": await resolvePlot(p, t); break;
+    case "well": await doWell(p); break;
+    case "market": await doMarket(p, false); break;
+    case "coop": await doCoop(p); break;
+    case "fair": await doFair(p); break;
+
+    case "tractor":
+      if (depth >= 2){ log(who(p) + " parks the tractor for now."); await sleep(400); break; }
+      SFX.play("tractor");
+      bubble(p, "\ud83d\ude0e");
+      setTimeout(() => SFX.voice("dog"), 520);
+      toast("🚜", p.name + " hitches a ride — 3 tiles on!");
+      await sleep(420);
+      await shove(p, 3);
+      await resolveLanding(p, depth + 1);
+      break;
+
+    case "gopher":
+      if (depth >= 2){ await sleep(300); break; }
+      SFX.play("gopher");
+      bubble(p, "\ud83d\ude31");
+      setTimeout(() => SFX.voice("dog"), 380);
+      pay(p, -20, p.pos, who(p) + " met a gopher: −20 coins and 3 tiles back", "lr");
+      sparkle(p.pos, ["🕳️","🐹"], 8);
+      await sleep(520);
+      await shove(p, -3);
+      await resolveLanding(p, depth + 1);
+      break;
+
+    case "bridge":
+      if (depth >= 2 || t.link == null){ await sleep(300); break; }
+      SFX.play("bridge");
+      setTimeout(() => SFX.voice("goat"), 300);
+      toast("🌉", p.name + " takes the rope bridge to tile " + (t.link + 1));
+      await sleep(420);
+      p.abs += t.link - p.pos;
+      await flyTo(p, t.link);
+      renderRail();
+      await resolveLanding(p, depth + 1);
+      break;
+
+    case "twister": {
+      if (depth >= 2){ await sleep(300); break; }
+      SFX.play("twister");
+      bubble(p, "\ud83d\ude35\u200d\ud83d\udcab");
+      SFX.chorus(["cluck","quack","turkey","goat"], 120);
+      windGust();
+      const spots = [];
+      for (let i = 1; i < LAST; i++) if (i !== p.pos) spots.push(i);
+      const to = pick(spots, S.rnd);
+      /* a twister that drops you behind where you were costs you ground */
+      const fwd = (to - p.pos + NTILES) % NTILES;
+      p.abs += fwd <= NTILES / 2 ? fwd : fwd - NTILES;
+      toast("🌪️", p.name + " is whirled to tile " + (to + 1) + "!");
+      p.node.style.transition = "none";
+      await sleep(380);
+      await flyTo(p, to);
+      renderRail();
+      log(who(p) + " was swept by a twister from tile " + (t.i + 1) + " to <b>" + (to + 1) + "</b>", "lb");
+      await resolveLanding(p, depth + 1);
+      break;
+    }
+    case "barn":
+      log(who(p) + " parks up inside the barn for a breather.");
+      await sleep(420); break;
+  }
+}
+
+async function crossGate(p){
+  SFX.voice("dog");
+  yardStir();
+  pay(p, 25, p.pos, who(p) + " rolled back through the farmyard (+25)");
+  sparkle(p.pos, ["🏡","🌾"], 5);
+  await sleep(460);
+}
+async function crossBarn(p){
+  const need = lapGoal();
+  /* Twisters and gophers can sweep you back past the barn — a run only counts
+     if you have covered a lap's worth of ground since the last one. */
+  if (p.abs - p.lastLapAbs < NTILES - 3){
+    SFX.play("bell");
+    pay(p, 40, p.pos, who(p) + " rolled back through the barn (+40) — no run credited");
+    sparkle(p.pos, ["🏚️"], 6);
+    await sleep(600);
+    return;
+  }
+  p.lap++;
+  p.lastLapAbs = p.abs;
+  bubble(p, "\ud83c\udf89");
+  hopStandee(S.board[LAST].bbNode, "\ud83c\udfda\ufe0f");
+  SFX.play("bell");
+  setTimeout(() => SFX.voice("moo"), 260);
+  pay(p, 120, p.pos, who(p) + " hauled the harvest through <b>The Big Barn</b> — run " +
+      p.lap + (need ? "/" + need : "") + " (+120)");
+  sparkle(p.pos, ["🏚️","🌾","🪙"], 14);
+  shockAt(p.pos);
+  renderRail();
+  if (need && p.lap >= need && !S.finalDay && !S.over){
+    p.finished = true;
+    S.finalDay = true;
+    SFX.play("fanfare");
+    confettiStorm(32);
+    renderWx();
+    toast("🔔", p.name + " finished run " + need + " — FINAL DAY!", true);
+    log('<b>🔔 FINAL DAY.</b> ' + p.name + ' is done. Everyone else gets one last turn, then every ' +
+        'standing crop goes to market and the richest farm wins.', "lb");
+    await sleep(1500);
+  } else {
+    toast("🏚️", p.name + " completes lap " + p.lap + " · +120");
+    await sleep(760);
+  }
+}
+
+/* ============================================================================
+   PART 10 — TURN ENGINE
+   ========================================================================== */
+function rollValue(p){
+  if (p.luckyNext){ const v = p.luckyNext; p.luckyNext = 0; return v; }
+  return 1 + Math.floor(S.rnd() * 6);
+}
+async function doRoll(){
+  if (S.busy || S.over) return;
+  S.busy = true;
+  setActions([]);
+  DOM.dieHint.textContent = "rolling…";
+  const p = S.players[S.cur];
+  let chain = 0;
+  while (true){
+    const v = rollValue(p);
+    S.die = v;
+    await rollDieAnim(v);
+    if (S.gen !== p.gen0){ S.busy = false; return; }
+    DOM.dieHint.textContent = "rolled " + v;
+    log(who(p) + " rolled a <b>" + v + "</b>");
+    const path = walkPath(p.pos, v);
+    setHint(who(p) + " rolls <b>" + v + "</b> and hops " + path.length + " tile" + (path.length > 1 ? "s" : "") + "…");
+    await walk(p, path);
+    if (S.gen !== p.gen0){ S.busy = false; return; }
+    renderRail();
+    await resolveLanding(p, 0);
+    if (S.gen !== p.gen0){ S.busy = false; return; }
+    if (S.over){ S.busy = false; return; }
+    if (v === 6 && chain < 2 && !p.finished && !S.over){
+      chain++;
+      SFX.play("bell");
+      toast("🎲", p.name + " rolled a 6 — another roll!");
+      setHint(who(p) + " rolled a six — <b>roll again</b>.");
+      if (!p.cpu){
+        await new Promise(res => {
+          setActions([{label:"Roll again 🎲", cls:"gold pulse", k:"Space", fn:() => { setActions([]); res(); }}]);
+          S.waiting = res;
+        });
+        S.waiting = null;
+      } else await sleep(620);
+      if (S.gen !== p.gen0){ S.busy = false; return; }
+      continue;
+    }
+    break;
+  }
+  S.busy = false;
+  await endTurn();
+}
+
+async function endTurn(){
+  if (S.over) return;
+  const p = S.players[S.cur];
+  if (S.finalDay) p.finalDone = true;
+  if (checkTycoon()) return;
+
+  if (S.finalDay){
+    const nextUp = S.players.find(q => q.alive && !q.finished && !q.finalDone);
+    if (!nextUp){ await endSeason(); return; }
+    S.cur = nextUp.idx;
+    renderRail(); layoutPawns();
+    await sleep(380);
+    startTurn();
+    return;
+  }
+
+  /* normal rotation; wrapping past the last farmer advances the day */
+  let n = S.cur, guard = 0, wrapped = false;
+  do {
+    n = (n + 1) % S.players.length;
+    if (n === 0) wrapped = true;
+    guard++;
+  } while ((!S.players[n].alive || S.players[n].finished) && guard < 20);
+  S.cur = n;
+  if (wrapped){ await newDay(); if (S.over) return; }
+  renderRail(); layoutPawns();
+  await sleep(300);
+  startTurn();
+}
+
+function startTurn(){
+  if (S.over) return;
+  const p = S.players[S.cur];
+  p.gen0 = S.gen;
+  renderRail(); layoutPawns();
+  if (p.skip > 0){
+    p.skip--;
+    SFX.play("bad");
+    toast("😴", p.name + " is stuck in the mud and misses a turn");
+    log(who(p) + " is stuck in the mud — turn skipped.", "lr");
+    renderRail();
+    setHint(who(p) + " is <b>stuck in the mud</b> and misses this turn.");
+    setActions([]);
+    setTimeout(() => endTurn(), 1100);
+    return;
+  }
+  const ripe = myCrops(p).filter(isRipe).length;
+  const tip = ripe ? " You have <b>" + ripe + "</b> ripe crop" + (ripe > 1 ? "s" : "") + " waiting."
+                   : (animalIncome(p) ? " Your animals pay <b>" + animalIncome(p) + "</b> at dawn." : "");
+  setHint(who(p) + "'s turn." + tip);
+  DOM.dieHint.textContent = p.cpu ? "thinking…" : "tap to roll";
+  if (p.cpu){
+    setActions([]);
+    setTimeout(() => doRoll(), 760);
+  } else {
+    setActions([{label:"Roll the die 🎲", cls:"gold pulse", k:"Space", fn:doRoll}]);
+  }
+}
+
+/* ============================================================================
+   PART 11 — THE DAY CYCLE (dawn: weather, growth, livestock)
+   ========================================================================== */
+function nextWeather(){
+  /* never the same nasty weather twice in a row */
+  let w = pick(WX_BAG, S.rnd), guard = 0;
+  while ((w === S.wx && (w === "drought" || w === "storm")) && guard++ < 8) w = pick(WX_BAG, S.rnd);
+  return w;
+}
+async function newDay(){
+  S.day++;
+  S.wx = S.wxNext;
+  S.wxNext = nextWeather();
+  const W = WEATHER[S.wx];
+  renderWx();
+  rippleBoard();
+  SFX.voice("crow");
+  setTimeout(() => SFX.play("dayBreak"), 620);
+  setTimeout(() => SFX.chorus(boardAnimals().slice(0, 4), 230), 1050);
+  toast("🌅", "Day " + S.day + " — " + W.emoji + " " + W.name, true);
+  log('<b>🌅 Day ' + S.day + '</b> · ' + W.emoji + " " + W.name + " — " + W.note, "lb");
+  await sleep(950);
+
+  if (S.wx === "storm"){ lightning(); windGust(); await sleep(500); }
+  if (S.wx === "rain" || S.wx === "rainbow") windGust();
+  if (S.wx === "rainbow") SFX.play("bell");
+
+  /* --- growth --- */
+  const crops = S.board.filter(t => t.crop);
+  let ripened = 0, grew = 0;
+  for (const t of crops){
+    const owner = S.players[t.crop.owner];
+    let g = W.grow * (owner.irrigDays > 0 ? 2 : 1);
+    if (g <= 0) continue;
+    if (grow(t, g)){ ripened++; ripenBurst(t.i); }
+    grew++;
+    hopStandee(t.bbNode);
+    sparkle(t.i, [W.grow >= 2 ? "💧" : "☀️"], 3);
+    await sleep(55);
+  }
+  if (grew){
+    SFX.play("grow");
+    if (ripened) toast("🌾", ripened + " crop" + (ripened > 1 ? "s" : "") + " ripened overnight");
+  } else if (S.wx === "drought" && crops.length){
+    toast("🌵", "Parched earth — nothing grew today");
+  }
+
+  /* --- storm damage --- */
+  if (S.wx === "storm"){
+    const victims = crops.filter(t => t.crop && S.players[t.crop.owner].scareDays <= 0);
+    if (victims.length && S.rnd() < .72){
+      const t = pick(victims, S.rnd);
+      const C = CROPS[t.crop.key], o = S.players[t.crop.owner];
+      t.crop = null; renderTile(t.i);
+      SFX.play("bad");
+      sparkle(t.i, ["💨","🍂"], 12);
+      floatText(t.i, "flattened!", "#ff7a90");
+      toast("⛈️", "The storm flattened " + o.name + "'s " + C.emoji);
+      log("⛈️ The storm flattened " + o.name + "'s " + C.emoji + " " + C.name + " on tile " + (t.i + 1), "lr");
+      await sleep(850);
+    } else if (victims.length === 0 && crops.length){
+      toast("🧟", "Scarecrows held the storm off");
+      await sleep(600);
+    }
+  }
+
+  /* --- livestock payday --- */
+  for (const p of S.players){
+    if (p.irrigDays > 0) p.irrigDays--;
+    if (p.scareDays > 0) p.scareDays--;
+    const inc = animalIncome(p);
+    if (!inc || !p.alive) continue;
+    p.coins += inc;
+    p.stats.earned += inc;
+    SFX.chorus(p.animals.map(k => ANIMALS[k].sfx), 210);
+    S.board.forEach(t => { if (t.animal && t.animal.owner === p.idx) hopStandee(t.bbNode, "\ud83e\ude99"); });
+    bubble(p, "\ud83e\ude99");
+    floatText(p.pos, "+" + inc + " 🐄", p.color);
+    coinBurst(p.pos, Math.ceil(inc / 14));
+    log(who(p) + " collected <b>" + inc + "</b> from " + p.animals.length + " animal" +
+        (p.animals.length > 1 ? "s" : ""), "lg");
+    await sleep(330);
+  }
+  renderRail();
+  renderAllTiles();
+  markLeader();
+  await sleep(400);
+  if (checkTycoon()) return;
+
+  const limit = MODES[S.mode].days;
+  if (limit){
+    const left = limit - S.day;
+    if (left <= 0){
+      S.finalDay = true;
+      renderWx();
+      toast("🌅", "Day " + limit + " — the last day of the season!", true);
+      log("<b>⏱️ Final day of the season.</b> Make it count.", "lb");
+      S.players.forEach(q => q.finalDone = false);
+      await sleep(1100);
+    } else if (left <= 2){
+      toast("⏱️", left + " day" + (left > 1 ? "s" : "") + " left in the season");
+      await sleep(600);
+    }
+  }
+}
+
+/* ============================================================================
+   PART 12 — ENDGAME
+   ========================================================================== */
+function checkTycoon(){
+  if (S.over) return false;
+  const target = MODES[S.mode].target;
+  if (!target) return false;
+  const win = S.players.filter(p => p.alive && p.coins >= target)
+                       .sort((a, b) => b.coins - a.coins)[0];
+  if (!win) return false;
+  endSeason(win);
+  return true;
+}
+async function endSeason(forceWinner){
+  if (S.over) return;
+  S.over = true;
+  stopLife();
+  setActions([]);
+  DOM.dieHint.textContent = "";
+  setHint("The season is over — counting the harvest…");
+
+  /* every standing crop goes to market: ripe at full, young at half of what it's grown */
+  const standing = S.board.filter(t => t.crop);
+  if (standing.length){
+    log("<b>🚚 Final sell-off</b> — every standing crop goes to market.", "lb");
+    toast("🚚", "Final sell-off: " + standing.length + " crop" + (standing.length > 1 ? "s" : ""));
+    for (const t of standing){
+      const o = S.players[t.crop.owner];
+      const full = harvestValue(t, 1);
+      const val = isRipe(t) ? full : Math.round(full * .5 * cropProgress(t));
+      o.coins += val; o.stats.earned += val;
+      t.crop = null; renderTile(t.i);
+      if (val){ floatText(t.i, "+" + val, o.color); coinBurst(t.i, Math.ceil(val / 26)); SFX.play("coin", 2); }
+      await sleep(210);
+    }
+    renderRail();
+    await sleep(600);
+  }
+  /* herds are sold off too */
+  for (const p of S.players){
+    const hv = herdValue(p);
+    if (hv){ p.coins += hv; log(who(p) + " sold the herd for <b>" + hv + "</b>", "lg"); }
+  }
+  renderRail();
+
+  const ranked = S.players.slice().sort((a, b) =>
+    b.coins - a.coins || b.lap - a.lap || b.stats.earned - a.stats.earned);
+  const winner = forceWinner || ranked[0];
+
+  SFX.rainOff();
+  SFX.play("fanfare");
+  setTimeout(() => SFX.chorus(null, 170), 1400);
+  confettiStorm(130);
+  DOM.winCrown.textContent = winner.emoji;
+  DOM.winName.innerHTML = winner.name + " wins the season! 🏆";
+  DOM.winSub.innerHTML = MODES[S.mode].target
+    ? "First farm to bank " + MODES[S.mode].target + " coins, after <b>" + S.day + "</b> days."
+    : "Richest farm after <b>" + S.day + "</b> day" + (S.day > 1 ? "s" : "") + " on the track.";
+  DOM.scores.innerHTML = "";
+  ranked.forEach((p, n) => {
+    const row = el("div", "srow");
+    row.style.setProperty("--pc", p.color);
+    row.style.animationDelay = (n * .11) + "s";
+    row.innerHTML =
+      '<span class="pos">' + ["🥇","🥈","🥉","4th","5th","6th"][n] + '</span>' +
+      '<span class="av">' + p.emoji + '</span>' +
+      '<span class="nm">' + p.name + (p.cpu ? " <small style=\"color:var(--faint)\">CPU</small>" : "") +
+        '<span class="br">' + p.stats.harvested + " harvested · " + p.stats.planted + " planted · " +
+        p.stats.steps + " tiles walked · " + p.lap + " lap" + (p.lap === 1 ? "" : "s") +
+        (p.stats.scrumped ? " · " + p.stats.scrumped + " scrumped" : "") + '</span></span>' +
+      '<span class="tot">' + p.coins + '</span>';
+    DOM.scores.appendChild(row);
+  });
+  await sleep(700);
+  DOM.win.classList.add("on");
+}
+
+/* ============================================================================
+   PART 13 — CPU FARMERS
+   ========================================================================== */
+/* the chosen number of runs to the barn — 0 when the mode has no lap target */
+function lapGoal(){ return MODES[S.mode].laps ? S.lapGoal : 0; }
+
+/* how many more dawns a CPU can reasonably plan for */
+function daysHorizon(p){
+  if (S.finalDay) return 0;
+  const M = MODES[S.mode];
+  if (M.days) return clamp(M.days - S.day, 0, 16);
+  if (M.target){
+    const inc = Math.max(8, animalIncome(p) + 30);
+    return clamp(Math.round((M.target - p.coins) / inc), 2, 14);
+  }
+  /* festival: whoever is closest to finishing their last lap sets the clock */
+  let soonest = 99;
+  S.players.forEach(q => {
+    if (!q.alive) return;
+    const lapsLeft = Math.max(0, (lapGoal() || 1) - q.lap - 1);
+    soonest = Math.min(soonest, Math.ceil(((LAST - q.pos) + lapsLeft * NTILES) / 4.2));
+  });
+  return clamp(soonest, 0, 16);
+}
+function aiPickCrop(p, t, offer){
+  const days = daysHorizon(p);
+  const reserve = MODES[S.mode].target ? 25 : 15;
+  let best = null, bestScore = 0;
+  offer.forEach(k => {
+    const C = CROPS[k];
+    if (p.coins - C.cost < reserve) return;
+    const need = daysNeeded(t, k);
+    const val = C.value * (t.soil === "rich" ? 1.5 : 1);
+    /* will it ripen in time? if not, count the salvage value only */
+    const ripens = need <= days;
+    const expect = ripens ? val * 1.05 : val * .5 * Math.min(1, days / need);
+    const score = expect - C.cost;
+    if (score > bestScore){ bestScore = score; best = k; }
+  });
+  /* if nothing clears the bar but we're flush, plant the cheapest thing anyway */
+  if (!best && p.coins > 190){
+    const cheap = offer.slice().sort((a, b) => CROPS[a].cost - CROPS[b].cost)[0];
+    if (p.coins - CROPS[cheap].cost >= reserve) best = cheap;
+  }
+  return best;
+}
+function aiPickAnimal(p){
+  const days = Math.max(daysHorizon(p), MODES[S.mode].target ? 6 : 2) + 2;
+  let best = null, bestScore = 0;
+  ANIMAL_KEYS.forEach(k => {
+    const A = ANIMALS[k];
+    if (p.coins - A.cost < 45) return;
+    const score = A.income * days - A.cost * .85;
+    if (score > bestScore){ bestScore = score; best = k; }
+  });
+  return best;
+}
+
+/* ============================================================================
+   PART 14 — SETUP SCREEN
+   ========================================================================== */
+const setupState = {
+  picked:{cluck:{on:true, cpu:false}, bella:{on:true, cpu:true}},
+  mode:"festival",
+  laps:2,
+};
+function renderSetup(){
+  DOM.roster.innerHTML = "";
+  AVATARS.forEach(av => {
+    const st = setupState.picked[av.id];
+    const on = !!(st && st.on);
+    const n = el("div", "slot" + (on ? " on" : ""));
+    n.style.setProperty("--pc", av.color);
+    n.innerHTML =
+      '<span class="av">' + av.emoji + '</span>' +
+      '<span class="info"><b>' + av.name + '</b><small>' + av.blurb + '</small></span>' +
+      '<span class="tog ' + (on && st.cpu ? "cpu" : "human") + '">' + (!on ? "JOIN" : st.cpu ? "CPU" : "HUMAN") + '</span>';
+    n.addEventListener("click", e => {
+      SFX.boot();
+      const tog = e.target.closest(".tog");
+      const cur = setupState.picked[av.id];
+      if (tog && cur && cur.on){ cur.cpu = !cur.cpu; SFX.play("click"); }
+      else if (cur && cur.on){
+        const count = Object.values(setupState.picked).filter(x => x.on).length;
+        if (count <= 2){ toast("👨‍🌾", "You need at least two farmers"); return; }
+        cur.on = false; SFX.play("spend");
+      } else {
+        const count = Object.values(setupState.picked).filter(x => x.on).length;
+        if (count >= 4){ toast("🚜", "Four farmers is a full field"); return; }
+        setupState.picked[av.id] = {on:true, cpu:count >= 1};
+        SFX.voice(av.id === "bella" ? "moo" : av.id === "porky" ? "oink" :
+                  av.id === "woolly" ? "baa" : av.id === "cluck" ? "cluck" : "bird");
+      }
+      renderSetup();
+    });
+    DOM.roster.appendChild(n);
+  });
+  DOM.modes.innerHTML = "";
+  Object.values(MODES).forEach(M => {
+    const n = el("div", "mode" + (setupState.mode === M.id ? " on" : ""));
+    n.innerHTML = '<b>' + M.e + ' ' + M.name + '</b><small>' + M.blurb + '</small>';
+    n.addEventListener("click", () => { setupState.mode = M.id; SFX.play("click"); renderSetup(); });
+    DOM.modes.appendChild(n);
+  });
+  /* how many runs to the barn — only meaningful for the lap mode */
+  const lapsMode = !!MODES[setupState.mode].laps;
+  DOM.lapPick.classList.toggle("off", !lapsMode);
+  DOM.lapSegs.innerHTML = "";
+  [1, 2, 3, 4, 5, 6].forEach(k => {
+    const b = el("button", "seg" + (setupState.laps === k ? " on" : ""), String(k));
+    b.addEventListener("click", () => {
+      setupState.mode = "festival";
+      setupState.laps = k;
+      SFX.play("click"); SFX.voice("cluck");
+      renderSetup();
+    });
+    DOM.lapSegs.appendChild(b);
+  });
+  const rolls = Math.ceil(NTILES / 4.2) * setupState.laps;
+  DOM.lapNote.innerHTML = lapsMode
+    ? "≈ <b>" + rolls + "</b> rolls each · " +
+      (setupState.laps === 1 ? "a quick sprint" : setupState.laps <= 2 ? "a full season"
+       : setupState.laps <= 4 ? "a long haul" : "an epic")
+    : "tap a number to switch to Barn Runs";
+  const list = AVATARS.filter(a => setupState.picked[a.id] && setupState.picked[a.id].on);
+  const humans = list.filter(a => !setupState.picked[a.id].cpu).length;
+  DOM.setupNote.innerHTML = list.length + " farmers · " +
+    (humans === 0 ? "<b>watch the CPUs battle it out</b>"
+     : humans === 1 ? "<b>solo vs CPU</b>"
+     : "<b>" + humans + "-player pass-and-play</b>");
+}
+function buildLegend(){
+  DOM.legend.innerHTML = "";
+  Object.keys(KINDS).forEach(k => {
+    if (k === "plot") return;
+    const K = KINDS[k];
+    DOM.legend.appendChild(el("div", "", '<i>' + K.emoji + '</i><span><b>' + K.name + '</b><small>' + K.desc + '</small></span>'));
+  });
+  ["rich","rocky"].forEach(s => {
+    DOM.legend.appendChild(el("div", "", s === "rich"
+      ? '<i>✨</i><span><b>Rich Soil</b><small>Harvests from this plot are worth 50% more.</small></span>'
+      : '<i>🪨</i><span><b>Rocky Soil</b><small>Crops planted here need one extra day.</small></span>'));
+  });
+  Object.keys(CROPS).forEach(k => {
+    const C = CROPS[k];
+    DOM.legend.appendChild(el("div", "", '<i>' + C.emoji + '</i><span><b>' + C.name + '</b><small>' +
+      C.cost + ' coins · ' + C.days + ' day' + (C.days > 1 ? 's' : '') + ' · sells for ' + C.value + '</small></span>'));
+  });
+  Object.keys(ANIMALS).forEach(k => {
+    const A = ANIMALS[k];
+    DOM.legend.appendChild(el("div", "", '<i>' + A.emoji + '</i><span><b>' + A.name + '</b><small>' +
+      A.cost + ' coins · pays ' + A.income + ' every dawn</small></span>'));
+  });
+}
+
+/* ============================================================================
+   PART 15 — NEW GAME / BOOT
+   ========================================================================== */
+function startGame(){
+  S.gen++;
+  S.over = false; S.finalDay = false; S.busy = false; S.waiting = null;
+  S.seed = (Math.random() * 1e9) | 0;
+  S.rnd = mulberry(S.seed);
+  S.board = makeBoard(S.seed);
+  S.deck = makeDeck(S.rnd);
+  S.mode = MODES[setupState.mode] ? setupState.mode : "festival";
+  S.lapGoal = clamp(setupState.laps | 0, 1, 6) || 2;
+  S.day = 1;
+  S.wx = "sun";
+  S.wxNext = nextWeather();
+  S.cur = 0;
+
+  const list = AVATARS.filter(a => setupState.picked[a.id] && setupState.picked[a.id].on);
+  S.players = list.map((av, i) => makePlayer(av, setupState.picked[av.id].cpu, i));
+
+  DOM.log.innerHTML = "";
+  DOM.conf.innerHTML = "";
+  DOM.win.classList.remove("on");
+  DOM.setup.classList.remove("on");
+  closeModal();
+
+  buildBoard();
+  buildPawns();
+  layoutProps();
+  layoutFlyers();
+  startLife();
+  renderRail();
+  renderWx();
+  renderGoal();
+  fit();
+  resetCam();
+  inspect(0);
+
+  log("<b>🌻 A new season begins</b> at Barnstorm Farm — " +
+      S.players.map(p => p.emoji + " " + p.name).join(", ") + ".", "lb");
+  log(MODES[S.mode].e + " <b>" + MODES[S.mode].name + "</b> — " + MODES[S.mode].blurb);
+  toast("🌻", "Day 1 · " + MODES[S.mode].name, true);
+  SFX.boot();
+  SFX.watchHerd(herdPick);
+  SFX.voice("crow");
+  setTimeout(() => SFX.chorus(["moo","cluck","baa","oink"], 260), 700);
+  setTimeout(() => startTurn(), 1400);
+}
+
+/* ---- buttons ---- */
+$("#bStart").addEventListener("click", () => { SFX.boot(); SFX.play("click"); startGame(); });
+$("#bAgain").addEventListener("click", () => { DOM.win.classList.remove("on"); DOM.setup.classList.add("on"); renderSetup(); });
+$("#bNew").addEventListener("click", () => {
+  S.gen++; S.over = true; S.busy = false; stopLife();
+  SFX.rainOff(); closeModal();
+  DOM.win.classList.remove("on"); DOM.setup.classList.add("on"); renderSetup();
+});
+$("#bHelp").addEventListener("click", () => DOM.help.classList.add("on"));
+$("#bHelp2").addEventListener("click", () => DOM.help.classList.add("on"));
+$("#bHelpClose").addEventListener("click", () => DOM.help.classList.remove("on"));
+$("#bCam").addEventListener("click", () => { SFX.play("click"); resetCam(); });
+DOM.dieScene.addEventListener("click", () => {
+  SFX.boot();
+  if (S.over || S.busy) return;
+  const p = S.players[S.cur];
+  if (!p || p.cpu) return;
+  if (S.waiting){ const r = S.waiting; S.waiting = null; setActions([]); r(); return; }
+  doRoll();
+});
+const bSound = $("#bSound"), bMusic = $("#bMusic");
+function paintAudioBtns(){
+  bSound.textContent = SFX.muted ? "🔇" : "🔊";
+  bSound.classList.toggle("off", SFX.muted);
+  bMusic.classList.toggle("off", !SFX.music);
+}
+bSound.addEventListener("click", () => { SFX.boot(); SFX.toggleMute(); paintAudioBtns(); if (!SFX.muted) SFX.play("click"); });
+bMusic.addEventListener("click", () => { SFX.boot(); SFX.toggleMusic(); paintAudioBtns(); });
+
+/* ---- keyboard ---- */
+addEventListener("keydown", e => {
+  const k = e.key.toLowerCase();
+  if (k === "escape"){
+    if (DOM.help.classList.contains("on")) DOM.help.classList.remove("on");
+    else if (DOM.modal.classList.contains("on") && modalResolve) modalResolve(null);
+    return;
+  }
+  if (k === "h"){ DOM.help.classList.toggle("on"); return; }
+  if (k === "m"){ SFX.boot(); SFX.toggleMute(); paintAudioBtns(); return; }
+  if (k === "c"){ resetCam(); return; }
+  if (k === "n"){ $("#bNew").click(); return; }
+  if (DOM.modal.classList.contains("on")){
+    if (k >= "1" && k <= "4"){
+      const card = DOM.mBody.querySelector('.card[data-hot="' + k + '"]');
+      if (card) card.click();
+    } else if (k === "enter"){
+      const b = DOM.mFoot.querySelector(".btn");
+      if (b) b.click();
+      else { const c = DOM.mBody.querySelector(".card"); if (c) c.click(); }
+    }
+    return;
+  }
+  if (DOM.setup.classList.contains("on")){ if (k === "enter" || k === " ") $("#bStart").click(); return; }
+  if (DOM.win.classList.contains("on")){ if (k === "enter" || k === " ") $("#bAgain").click(); return; }
+  if (k === " " || k === "enter"){
+    e.preventDefault();
+    const b = DOM.actions.querySelector(".btn");
+    if (b) b.click();
+  }
+});
+addEventListener("resize", fit);
+DOM.modal.addEventListener("click", e => { if (e.target === DOM.modal && modalResolve) modalResolve(null); });
+DOM.help.addEventListener("click", e => { if (e.target === DOM.help) DOM.help.classList.remove("on"); });
+
+/* ---- go ---- */
+paintDie();
+setDie(1, 0);
+paintAudioBtns();
+buildLegend();
+renderSetup();
+renderGoal();
+applyCam(true);
+fit();
+renderWx();
+log("Welcome to <b>Barnstorm: Harvest Rush</b> 🌻");
+</script>
+</body>
+</html>
