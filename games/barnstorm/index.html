@@ -716,9 +716,15 @@ h1,h2,h3,h4,p{margin:0}
 
 /* ---- things that happen to a farmer ----------------------------------- */
 /* a tractor hitched on behind, blowing smoke */
-.bb.tow{left:calc(var(--cell)*-1.05);width:var(--cell)}
-.bb.tow .glyph{font-size:calc(var(--cell)*.4);animation:towJig .36s ease-in-out infinite alternate}
-@keyframes towJig{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-8%) rotate(3deg)}}
+/* Hitched close in behind the piece. It used to hang a half-tile out, which
+   put it on top of whatever was standing on the next tile along — so it read
+   as the tractor belonging to somebody's cow rather than to the farmer. */
+.bb.tow{left:calc(var(--cell) * var(--towx,-0.80));width:var(--cell)}
+.bb.tow .glyph{font-size:calc(var(--cell)*.30);
+  animation:towJig .36s ease-in-out infinite alternate}
+@keyframes towJig{
+  from{transform:scaleX(var(--towflip,1)) translateY(0) rotate(-3deg)}
+  to{transform:scaleX(var(--towflip,1)) translateY(-9%) rotate(3deg)}}
 /* a gopher having a good look at what it just did */
 .molepop .glyph{font-size:calc(var(--cell)*.34);animation:molePop 2s ease-out forwards}
 @keyframes molePop{
@@ -1514,11 +1520,19 @@ const SFX = (function(){
     musicGain.connect(master);
     ambGain = ctx.createGain(); ambGain.gain.value = 0.3; ambGain.connect(master);
     /* animals get their own bus so the farm always sits above the banjo */
-    voiceBus = ctx.createGain(); voiceBus.gain.value = 1.4; voiceBus.connect(master);
+    voiceBus = ctx.createGain(); voiceBus.gain.value = 1.15; voiceBus.connect(master);
     return ctx;
   }
   function now(){ return ctx.currentTime; }
-  function ok(){ if (!boot()) return false; if (ctx.state === "suspended") ctx.resume(); return !muted; }
+  /* Safari parks a context in "interrupted", not "suspended", and a resume()
+     fired the instant the context is born can quietly lose the race — so we
+     retry on anything that is not actually running, and never leave the
+     promise unhandled. */
+  function resume(){
+    if (!ctx) return;
+    try { const r = ctx.resume(); if (r && r.catch) r.catch(() => {}); } catch(e){}
+  }
+  function ok(){ if (!boot()) return false; if (ctx.state !== "running") resume(); return !muted; }
 
   /* ---- primitives ---- */
   function tone(o){
@@ -1582,12 +1596,18 @@ const SFX = (function(){
      Every call gets its own little channel: a gain for how far away it is and
      a stereo panner for which way it came from. That single change is what
      turns a list of beeps into a farm you are standing in the middle of. */
+  /* A NaN reaching an AudioParam poisons everything downstream of it — one
+     bad value can silence the whole output — so both numbers are scrubbed. */
+  function num(v, d, lo, hi){
+    v = typeof v === "number" && isFinite(v) ? v : d;
+    return v < lo ? lo : v > hi ? hi : v;
+  }
   function spatial(pan, dist){
     const g = ctx.createGain();
-    g.gain.value = dist == null ? 1 : dist;
+    g.gain.value = num(dist, 1, 0, 1);
     if (ctx.createStereoPanner){
       const pn = ctx.createStereoPanner();
-      pn.pan.value = pan < -1 ? -1 : pan > 1 ? 1 : (pan || 0);
+      pn.pan.value = num(pan, 0, -1, 1);
       g.connect(pn); pn.connect(voiceBus);
     } else g.connect(voiceBus);
     return g;
@@ -1903,7 +1923,20 @@ const SFX = (function(){
     comTimer = setInterval(() => { if (Math.random() < .45) commotion(); }, 19000);
   }
 
+  /* Browsers only start audio from a real gesture, and a context can sit
+     suspended long after the first click — on a phone it can be interrupted
+     by a call and never come back. Every interaction retries, for free. */
+  (function installUnlock(){
+    const wake = () => { if (boot()) resume(); };
+    ["pointerdown", "touchend", "keydown"].forEach(ev =>
+      document.addEventListener(ev, wake, {capture:true, passive:true}));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) resume(); });
+  })();
+
   return {
+    /* "off" (never booted), "suspended"/"interrupted" (blocked), "running" */
+    get state(){ return ctx ? ctx.state : "off"; },
+    wake(){ if (boot()) resume(); },
     play(name, arg){ const f = lib[name] || voices[name]; if (f){ try { f(arg); } catch(e){} } },
     voice(name){ if (voices[name]){ if (!ok()) return; try { voices[name](); } catch(e){} } },
     boot(){ boot(); startMusic(); startAmbience(); },
@@ -3086,6 +3119,11 @@ function tractorTow(p){
   unhitch(p);                          /* never two tractors on one piece */
   const gen = S.gen;
   const tow = el("div", "bb tow", '<span class="glyph">🚜</span>');
+  /* the track snakes, so "behind" flips every row — hitch it on the side the
+     farmer has just come from, close enough that it is plainly theirs */
+  const rightward = coordsOf(p.pos).row % 2 === 0;
+  tow.style.setProperty("--towx", rightward ? "-0.80" : "-0.20");
+  tow.style.setProperty("--towflip", rightward ? "1" : "-1");
   p.lift.appendChild(tow);
   const stop = () => {
     clearInterval(puff);
@@ -4409,8 +4447,9 @@ function startGame(){
   SFX.speak("crow", -.5, 1);
   setTimeout(() => SFX.chorus(["moo","cluck","baa","oink","honk","bray"], 240), 700);
   setTimeout(() => SFX.commotion(4), 1800);
-  /* a silent farm is nearly always a muted tab, so say so once */
+  /* a silent farm is nearly always a muted tab or a blocked context */
   if (SFX.muted) setTimeout(() => toast("🔇", "Sound is off — press M or tap 🔊", true), 1200);
+  else setTimeout(watchAudio, 1500);
   setTimeout(() => startTurn(), 1400);
 }
 
@@ -4436,11 +4475,35 @@ DOM.dieScene.addEventListener("click", () => {
 });
 const bSound = $("#bSound"), bMusic = $("#bMusic");
 function paintAudioBtns(){
-  bSound.textContent = SFX.muted ? "🔇" : "🔊";
-  bSound.classList.toggle("off", SFX.muted);
+  const blocked = !SFX.muted && SFX.state !== "running" && SFX.state !== "off";
+  bSound.textContent = SFX.muted ? "🔇" : blocked ? "🔈" : "🔊";
+  bSound.classList.toggle("off", SFX.muted || blocked);
+  bSound.title = SFX.muted ? "Sound is muted (M)"
+               : blocked ? "The browser has the sound blocked — click to start it"
+               : "Sound (M)";
   bMusic.classList.toggle("off", !SFX.music);
 }
-bSound.addEventListener("click", () => { SFX.boot(); SFX.toggleMute(); paintAudioBtns(); if (!SFX.muted) SFX.play("click"); });
+/* Silence should never be a mystery. If the browser is still holding the
+   audio back a moment after the season starts, say so and offer the fix. */
+let saidBlocked = false;
+function watchAudio(){
+  paintAudioBtns();
+  if (saidBlocked || SFX.muted) return;
+  if (SFX.state === "suspended" || SFX.state === "interrupted"){
+    saidBlocked = true;
+    toast("🔈", "Click anywhere to turn the sound on", true);
+  }
+}
+bSound.addEventListener("click", () => {
+  SFX.boot(); SFX.wake();
+  /* if the browser was simply blocking it, the first tap is an unblock, not a mute */
+  if (!SFX.muted && (SFX.state === "suspended" || SFX.state === "interrupted")){
+    setTimeout(() => { paintAudioBtns(); SFX.play("click"); }, 120);
+    return;
+  }
+  SFX.toggleMute(); paintAudioBtns(); if (!SFX.muted) SFX.play("click");
+});
+document.addEventListener("pointerdown", () => setTimeout(paintAudioBtns, 150), {passive:true});
 bMusic.addEventListener("click", () => { SFX.boot(); SFX.toggleMusic(); paintAudioBtns(); });
 
 /* ---- keyboard ---- */

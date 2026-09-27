@@ -219,8 +219,17 @@ The ambience is a proper soundscape rather than a list of effects:
 - Animals still hop when they speak, so **what you hear is always something you can see**.
 
 A headless audit counts **42 placed animal calls in thirty seconds**, spread across the full
-stereo field, on top of the bed. <kbd>M</kbd> mutes everything; 🎵 toggles just the music — and if
-you start a season muted, the game says so.
+stereo field, on top of the bed, and an offline render of the whole synth measures a peak of 0.83
+with real left/right separation and no clipping.
+
+**Silence is never a mystery.** Browsers only start audio from a real gesture, and a context can
+sit suspended long after the first click — or, on iOS, be interrupted by a call and never come
+back. So every pointer, touch and key press gets a free attempt to wake it, returning to the tab
+retries, and if the sound is still blocked a moment into the season the game says
+*"click anywhere to turn the sound on"* and the 🔊 button shows it. Every value reaching an audio
+parameter is scrubbed first, because one NaN poisons everything downstream of it.
+<kbd>M</kbd> mutes everything; 🎵 toggles just the music — and if you start a season muted, the
+game says that too.
 
 ## Architecture
 
